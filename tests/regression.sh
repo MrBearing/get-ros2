@@ -94,7 +94,7 @@ pass 'variant, development tools and sudo'
 
 reset MOCK_UID=1000 MOCK_SUDO_DENIED=1
 run 0 /bin/sh "$root/install.sh" --dry-run
-contains stdout 'not an official ROS 2 installer'
+contains stdout 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
 absent stdout '[y/N]'
 read_only
 pass 'dry run without consent or changes'
@@ -122,7 +122,7 @@ for args in '--unknown' '--distro' '--variant invalid' '--distro rolling'; do
     pass "invalid arguments: $args"
 done
 run 0 /bin/sh "$root/install.sh" --help
-contains stdout 'not an official ROS 2 installer'
+contains stdout 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
 [[ ! -s "$root/calls" ]]
 pass help
 

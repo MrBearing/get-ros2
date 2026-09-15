@@ -29,7 +29,7 @@ die() {
 usage() {
     cat <<'USAGE'
 ROS 2 installer — Ubuntu LTS (amd64 / arm64)
-This is an unofficial installer, not an official ROS 2 installer.
+This is an UNOFFICIAL installer, not an official ROS 2 installer.
 
 Usage:
   curl -fsSL https://get-ros2.com/install.sh | sh
@@ -40,7 +40,7 @@ Options:
   --variant NAME      desktop / ros-base (default: desktop)
   --with-dev-tools    Also install ros-dev-tools
   --dry-run           Show planned commands without sudo, network access, or file changes
-  -y, --yes           Acknowledge the unofficial installer notice and skip confirmation
+  -y, --yes           Acknowledge the UNOFFICIAL installer notice and skip confirmation
   -h, --help          Show this help
 
 Supported: Ubuntu 22.04 → Humble / 24.04 → Jazzy / 26.04 → Lyrical
@@ -124,7 +124,7 @@ detect_platform() {
 }
 
 confirm_installation() {
-    say 'This is an unofficial installer, not an official ROS 2 installer.'
+    say 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
     [ "$DRY_RUN" -eq 0 ] || return 0
     if [ "$ASSUME_YES" -eq 1 ]; then
         say 'Proceeding with your explicit --yes confirmation.'
@@ -132,9 +132,9 @@ confirm_installation() {
     fi
     # Read from the controlling terminal, never from the script input stream.
     if ! ( : </dev/tty ) 2>/dev/null; then
-        die E_CONFIRMATION 'Confirmation requires an interactive terminal. Rerun from a terminal, or use --yes to explicitly accept the unofficial installer notice.' 5
+        die E_CONFIRMATION 'Confirmation requires an interactive terminal. Rerun from a terminal, or use --yes to explicitly accept the UNOFFICIAL installer notice.' 5
     fi
-    printf 'Continue installing ROS 2 %s with this unofficial installer? [y/N] ' "$DISTRO" >/dev/tty ||
+    printf 'Continue installing ROS 2 %s with this UNOFFICIAL installer? [y/N] ' "$DISTRO" >/dev/tty ||
         die E_CONFIRMATION 'Unable to display the confirmation prompt. No changes were made.' 5
     CONFIRMATION=''
     IFS= read -r CONFIRMATION </dev/tty || CONFIRMATION=''

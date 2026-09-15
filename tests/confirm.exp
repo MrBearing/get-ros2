@@ -4,7 +4,7 @@ set timeout 15
 lassign $argv root installer shell answer
 spawn -noecho sh -c {cat "$1" | "$2" -s --} sh $installer $shell
 expect {
-    -exact {not an official ROS 2 installer.} {}
+    -exact {This is an UNOFFICIAL installer, not an official ROS 2 installer.} {}
     timeout {puts stderr "Missing unofficial installer notice"; exit 1}
     eof {puts stderr "Installer exited before the notice"; exit 1}
 }
