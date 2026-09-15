@@ -1,0 +1,15 @@
+# code	command stderr	expected guidance
+E_DISK	No space left on device	There is insufficient disk space or too few free inodes. Check df -h and df -i, free up space, and try again.
+E_READ_ONLY	Read-only file system	The filesystem is read-only. Check its mount state and investigate possible disk errors.
+E_DNS	Temporary failure resolving 'packages.ros.org'	Unable to resolve a hostname. Check DNS, network connectivity, and proxy settings.
+E_TLS	curl: (60) SSL certificate problem	Unable to verify a TLS certificate. Check the system clock, ca-certificates, and any corporate proxy CA configuration. Do not disable certificate verification.
+E_SIGNATURE	NO_PUBKEY F42ED6FBAB17C654	Unable to verify an APT repository signature. Check the repository named in the error and the signing key expiration date. For legacy ROS configuration, see the official migration instructions: https://github.com/ros-infrastructure/ros-apt-source
+E_REPOSITORY_CONFLICT	Conflicting values set for option Signed-By regarding source	The same APT repository has conflicting signing key settings. Check /etc/apt/sources.list and /etc/apt/sources.list.d/ for legacy or duplicate ROS entries. This installer does not automatically delete existing configuration.
+E_APT_LOCK	Could not get lock /var/lib/dpkg/lock-frontend	Another APT, dpkg, or automatic update process is running. Wait for it to finish and try again. Do not delete lock files.
+E_DPKG_INTERRUPTED	dpkg was interrupted, you must manually run dpkg --configure -a	A previous package operation was interrupted. Run sudo dpkg --configure -a and retry after it completes.
+E_DEPENDENCY	ca-certificates is already the newest version. Unable to correct problems, you have held broken packages.	Unable to resolve package dependencies. Check apt-mark showhold and the APT updates/security suites. On Ubuntu 24.04, also check noble-updates and noble-backports. Preview a repair with sudo apt-get -s --fix-broken install.
+E_REMOVAL_REQUIRED	E: Packages need to be removed but remove is disabled.	Installation stopped because it would remove existing packages. Preview the changes with sudo apt-get -s install ros-DISTRO-desktop and resolve missing OS updates or dependency problems.
+E_REPOSITORY	E: Unable to locate package ros-example-desktop	A package or repository is unavailable. Check the OS/ROS combination, APT sources, and HTTP status. For HTTP 403 or 429, also check proxy or server access limits.
+E_NETWORK	curl: (28) Connection timed out	The download failed. Check your internet connection, firewall, and proxy settings, then try again.
+E_PRIVILEGE	Permission denied - are you root?	Administrator privileges are missing or sudo authentication has expired. Run sudo -v, check your sudo permissions, and try again.
+E_COMMAND	An unexpected vendor error	Review the original error at the end of the log. Packages installed so far remain installed.

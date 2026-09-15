@@ -1,0 +1,105 @@
+name: Deploy installer
+
+on:
+  workflow_run:
+    workflows: [CI Ubuntu 22.04, CI Ubuntu 24.04, CI Ubuntu 26.04]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - name: Require all three CI workflows to pass for the current main commit
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          CANDIDATE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          current_sha=$(gh api "repos/$REPOSITORY/commits/main" --jq .sha)
+          if [ "$CANDIDATE_SHA" != "$current_sha" ]; then
+            echo 'A newer main commit exists; skipping this deployment.'
+            exit 0
+          fi
+          for workflow in ci-ubuntu-22-04.yml ci-ubuntu-24-04.yml ci-ubuntu-26-04.yml; do
+            conclusion=$(gh api --method GET "repos/$REPOSITORY/actions/workflows/$workflow/runs" \
+              -f branch=main -f event=push -f head_sha="$CANDIDATE_SHA" -f per_page=1 \
+              --jq '.workflow_runs[0].conclusion // "pending"')
+            if [ "$conclusion" != success ]; then
+              echo "$workflow: $conclusion; deployment requires all three workflows to pass."
+              exit 0
+            fi
+          done
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
+          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    if: needs.gate.outputs.ready == 'true'
+    needs: gate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+      - name: Recheck main after any environment approval wait
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TESTED_SHA: ${{ needs.gate.outputs.sha }}
+        run: test "$(gh api "repos/$REPOSITORY/commits/main" --jq .sha)" = "$TESTED_SHA"
+      - uses: actions/configure-pages@v5
+      - name: Prepare the tested files
+        run: |
+          mkdir _site
+          cp install.sh README.md _site/
+          touch _site/.nojekyll
+          cd _site
+          sha256sum install.sh > install.sh.sha256
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  check-published:
+    needs: deploy
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - name: Start the three independent published-installer workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          for workflow in published-ubuntu-22-04.yml published-ubuntu-24-04.yml published-ubuntu-26-04.yml; do
+            gh api --method POST "repos/$REPOSITORY/actions/workflows/$workflow/dispatches" -f ref=main
+          done

@@ -1,0 +1,84 @@
+name: Check one Ubuntu release
+
+on:
+  workflow_call:
+    inputs:
+      ubuntu:
+        required: true
+        type: string
+      source:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Shell and failure checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate the test configuration
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+          INSTALLER_SOURCE: ${{ inputs.source }}
+        run: |
+          case "$UBUNTU_VERSION" in 22.04|24.04|26.04) ;; *) exit 1 ;; esac
+          case "$INSTALLER_SOURCE" in repository|published) ;; *) exit 1 ;; esac
+      - name: Check the installer inside the target OS
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+          INSTALLER_SOURCE: ${{ inputs.source }}
+        run: |
+          mkdir _ci
+          docker run --rm --init \
+            -v "$PWD:/workspace:ro" -v "$PWD/_ci:/artifacts" -w /workspace \
+            -e DEBIAN_FRONTEND=noninteractive -e INSTALLER_SOURCE \
+            "ubuntu:$UBUNTU_VERSION" bash -euo pipefail -c '
+              apt-get -o APT::Update::Error-Mode=any update
+              apt-get install -y --no-install-recommends shellcheck expect ca-certificates curl
+              if [[ "$INSTALLER_SOURCE" == published ]]; then
+                bash tests/fetch-installer.sh /tmp/installer-under-test.sh
+              else
+                cp install.sh /tmp/installer-under-test.sh
+              fi
+              shellcheck --shell=sh /tmp/installer-under-test.sh
+              shellcheck --shell=bash tests/*.sh
+              bash tests/run.sh /tmp/installer-under-test.sh
+              cp /tmp/installer-under-test.sh /artifacts/install.sh
+            '
+      - name: Preserve the exact tested installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ inputs.ubuntu }}-${{ inputs.source }}
+          path: _ci/install.sh
+          retention-days: 1
+          if-no-files-found: error
+
+  install:
+    name: Install ${{ matrix.variant }}
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [ros-base, desktop]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer-${{ inputs.ubuntu }}-${{ inputs.source }}
+          path: installer
+      - name: Install the tested file in a clean Ubuntu container
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+          ROS_VARIANT: ${{ matrix.variant }}
+        run: |
+          docker run --rm --init -i \
+            -v "$PWD/installer/install.sh:/installer/install.sh:ro" \
+            "ubuntu:$UBUNTU_VERSION" sh -c \
+            'cat /installer/install.sh | sh -s -- --yes --variant "$1"' sh "$ROS_VARIANT"

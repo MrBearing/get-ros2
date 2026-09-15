@@ -1,0 +1,20 @@
+name: Published Ubuntu 26.04
+
+on:
+  schedule:
+    - cron: '31 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: ./.github/workflows/check-ubuntu.yml
+    with:
+      ubuntu: '26.04'
+      source: published

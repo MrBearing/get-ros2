@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+# Check a real controlling terminal while the installer arrives through a pipe.
+set timeout 15
+lassign $argv root installer shell answer
+spawn -noecho sh -c {cat "$1" | "$2" -s --} sh $installer $shell
+expect {
+    -exact {not an official ROS 2 installer.} {}
+    timeout {puts stderr "Missing unofficial installer notice"; exit 1}
+    eof {puts stderr "Installer exited before the notice"; exit 1}
+}
+expect {
+    -exact {[y/N] } {}
+    timeout {puts stderr "Missing confirmation prompt"; exit 1}
+    eof {puts stderr "Installer exited before confirmation"; exit 1}
+}
+set stream [open "$root/calls" r]
+set calls [read $stream]
+close $stream
+foreach call [split [string trim $calls] "\n"] {
+    if {![regexp {^(uname|dpkg) } $call]} {
+        puts stderr "Command ran before consent: $call"
+        exit 1
+    }
+}
+if {[llength [glob -nocomplain "$root/run.*"]] != 0} {
+    puts stderr "Files created before consent"
+    exit 1
+}
+set expected 5
+switch $answer {
+    y {send -- "y\r"; set expected 0}
+    yes {send -- "YeS\r"; set expected 0}
+    no {send -- "n\r"}
+    empty {send -- "\r"}
+    invalid {send -- "yes please\r"}
+    eof {send -- "\004"}
+    default {exit 1}
+}
+if {$expected == 0} {
+    set message {installation completed.}
+} else {
+    set message {ERROR E_CANCELLED: Installation cancelled. No changes were made.}
+}
+expect {
+    -exact $message {}
+    timeout {puts stderr "Missing outcome: $message"; exit 1}
+    eof {puts stderr "Installer exited without expected outcome"; exit 1}
+}
+expect eof
+set status [lindex [wait] 3]
+if {$status != $expected} {
+    puts stderr "Expected exit $expected, got $status"
+    exit 1
+}
