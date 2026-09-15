@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Validate the test configuration
@@ -52,7 +52,7 @@ jobs:
               cp /tmp/installer-under-test.sh /artifacts/install.sh
             '
       - name: Preserve the exact tested installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installer-${{ inputs.ubuntu }}-${{ inputs.source }}
           path: _ci/install.sh
@@ -69,7 +69,7 @@ jobs:
       matrix:
         variant: [ros-base, desktop]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: installer-${{ inputs.ubuntu }}-${{ inputs.source }}
           path: installer

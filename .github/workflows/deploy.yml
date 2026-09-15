@@ -38,6 +38,7 @@ jobs:
           current_sha=$(gh api "repos/$REPOSITORY/commits/main" --jq .sha)
           if [ "$CANDIDATE_SHA" != "$current_sha" ]; then
             echo 'A newer main commit exists; skipping this deployment.'
+            echo 'Deployment skipped: a newer main commit exists. No files were published.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           for workflow in ci-ubuntu-22-04.yml ci-ubuntu-24-04.yml ci-ubuntu-26-04.yml; do
@@ -46,6 +47,8 @@ jobs:
               --jq '.workflow_runs[0].conclusion // "pending"')
             if [ "$conclusion" != success ]; then
               echo "$workflow: $conclusion; deployment requires all three workflows to pass."
+              printf 'Deployment skipped: %s is %s. All three CI workflows must pass. No files were published.\n' \
+                "$workflow" "$conclusion" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
           done
@@ -64,7 +67,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.gate.outputs.sha }}
           persist-credentials: false
@@ -74,7 +77,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           TESTED_SHA: ${{ needs.gate.outputs.sha }}
         run: test "$(gh api "repos/$REPOSITORY/commits/main" --jq .sha)" = "$TESTED_SHA"
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Prepare the tested files
         run: |
           mkdir _site
@@ -82,12 +85,13 @@ jobs:
           touch _site/.nojekyll
           cd _site
           sha256sum install.sh > install.sh.sha256
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          include-hidden-files: true
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   check-published:
     needs: deploy

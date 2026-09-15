@@ -13,3 +13,8 @@ E_REPOSITORY	E: Unable to locate package ros-example-desktop	A package or reposi
 E_NETWORK	curl: (28) Connection timed out	The download failed. Check your internet connection, firewall, and proxy settings, then try again.
 E_PRIVILEGE	Permission denied - are you root?	Administrator privileges are missing or sudo authentication has expired. Run sudo -v, check your sudo permissions, and try again.
 E_COMMAND	An unexpected vendor error	Review the original error at the end of the log. Packages installed so far remain installed.
+E_CHECKSUM	/tmp/get-ros2-regression.tlSjuUUe/run.cI46xAss/ros2-apt-source.deb: FAILED	The downloaded file does not match the expected SHA-256 checksum. It may be corrupted or changed upstream. Installation has stopped. Check the official release and installer updates.
+E_CHECKSUM	/tmp/get-ros2.abc404xy/ros2-apt-source.deb: FAILED	The downloaded file does not match the expected SHA-256 checksum. It may be corrupted or changed upstream. Installation has stopped. Check the official release and installer updates.
+E_COMMAND	/tmp/get-ros2.tlS404xy/vendor.data: FAILED	Review the original error at the end of the log. Packages installed so far remain installed.
+E_TLS	TLS handshake failed	Unable to verify a TLS certificate. Check the system clock, ca-certificates, and any corporate proxy CA configuration. Do not disable certificate verification.
+E_REPOSITORY	E: Failed to fetch https://example.invalid/package.deb 404 Not Found	A package or repository is unavailable. Check the OS/ROS combination, APT sources, and HTTP status. For HTTP 403 or 429, also check proxy or server access limits.

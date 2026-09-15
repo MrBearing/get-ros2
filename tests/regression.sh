@@ -3,7 +3,8 @@
 set -euo pipefail
 directory=$(cd -- "$(dirname -- "$0")" && pwd)
 installer=$(realpath "${1:-install.sh}")
-root=$(mktemp -d /tmp/get-ros2-regression.XXXXXXXX)
+# Keep misleading TLS/HTTP substrings in paths to catch diagnostic false positives.
+root=$(mktemp -d /tmp/get-ros2-regression.tlS404.XXXXXXXX)
 trap 'rm -rf -- "$root"' EXIT
 mkdir "$root/bin"
 cp "$directory/mock-command.sh" "$root/bin/mock"

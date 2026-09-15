@@ -196,7 +196,7 @@ diagnose_failure() {
     elif matches 'Could not resolve|Temporary failure resolving|Name or service not known|Could not resolve proxy'; then
         FAILURE_CODE=E_DNS
         FAILURE_HINT='Unable to resolve a hostname. Check DNS, network connectivity, and proxy settings.'
-    elif matches 'certificate verification failed|certificate verify failed|certificate[[:space:]:].*(not trusted|issuer|expired|not yet valid|problem)|SSL (certificate|peer)|TLS.*(error|failed|handshake)|Could not handshake|curl: \((35|60|77)\)'; then
+    elif matches 'certificate verification failed|certificate verify failed|certificate[[:space:]:].*(not trusted|issuer|expired|not yet valid|problem)|SSL (certificate|peer)|(^|[[:space:]:])TLS([[:space:]:]|v[0-9]).*(error|failed|handshake)|Could not handshake|curl: \((35|60|77)\)'; then
         FAILURE_CODE=E_TLS
         FAILURE_HINT='Unable to verify a TLS certificate. Check the system clock, ca-certificates, and any corporate proxy CA configuration. Do not disable certificate verification.'
     elif matches 'NO_PUBKEY|EXPKEYSIG|BADSIG|signatures couldn.t be verified|not signed|OpenPGP signature verification failed'; then
@@ -217,7 +217,7 @@ diagnose_failure() {
     elif matches 'Packages need to be removed but remove is disabled'; then
         FAILURE_CODE=E_REMOVAL_REQUIRED
         FAILURE_HINT='Installation stopped because it would remove existing packages. Preview the changes with sudo apt-get -s install ros-'"$DISTRO"'-'"$VARIANT"' and resolve missing OS updates or dependency problems.'
-    elif matches 'Unable to locate package|has no installation candidate|does not have a Release file|no longer has a Release file|404|curl: \(22\)'; then
+    elif matches 'Unable to locate package|has no installation candidate|does not have a Release file|no longer has a Release file|(^|[[:space:]])404([[:space:]]|$)|curl: \(22\)'; then
         FAILURE_CODE=E_REPOSITORY
         FAILURE_HINT='A package or repository is unavailable. Check the OS/ROS combination, APT sources, and HTTP status. For HTTP 403 or 429, also check proxy or server access limits.'
     elif matches 'Connection failed|Failed to fetch|Failed to connect|Could not connect|Connection timed out|Connection refused|Network is unreachable|curl: \((5|7|18|28|52|55|56)\)'; then
