@@ -96,6 +96,7 @@ pass 'variant, development tools and sudo'
 reset MOCK_UID=1000 MOCK_SUDO_DENIED=1
 run 0 /bin/sh "$root/install.sh" --dry-run
 contains stdout 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
+contains stdout 'Provided AS IS, WITHOUT WARRANTY OF ANY KIND.'
 absent stdout '[y/N]'
 read_only
 pass 'dry run without consent or changes'
@@ -124,6 +125,7 @@ for args in '--unknown' '--distro' '--variant invalid' '--distro rolling'; do
 done
 run 0 /bin/sh "$root/install.sh" --help
 contains stdout 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
+contains stdout 'Provided AS IS, WITHOUT WARRANTY OF ANY KIND.'
 [[ ! -s "$root/calls" ]]
 pass help
 
@@ -203,6 +205,7 @@ for flag in --yes -y; do
     reset
     run_pipe 0 /bin/sh "$flag"
     contains stdout 'explicit --yes confirmation'
+    contains stdout 'Provided AS IS, WITHOUT WARRANTY OF ANY KIND.'
     pass "explicit consent: $flag"
 done
 printf 'Passed %s shell regression cases\n' "$count"
