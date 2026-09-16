@@ -81,7 +81,7 @@ jobs:
       - name: Prepare the tested files
         run: |
           mkdir _site
-          cp install.sh README.md _site/
+          cp install.sh README.md LICENSE _site/
           touch _site/.nojekyll
           cd _site
           sha256sum install.sh > install.sh.sha256

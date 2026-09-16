@@ -2,7 +2,7 @@
 
 A POSIX `sh` script that detects the operating system, version, and CPU architecture, then installs the corresponding ROS 2 LTS distribution from official APT packages.
 
-**This is an unofficial installer, not an official ROS 2 installer.**
+**This is an UNOFFICIAl installer, not an official ROS 2 installer.**
 
 | Ubuntu | Repository CI | Published installer |
 | --- | --- | --- |
@@ -113,3 +113,10 @@ External commands run with `LC_ALL=C`. The installer examines the failed step's 
 | `E_LOG` / `E_COMMAND` / `E_INTERRUPTED` | Log failure, unclassified command failure, or interruption |
 
 Exit codes: `0` for success, `1` for an operation failure, `2` for invalid arguments, `3` for an unsupported environment, `4` for a failed privilege precheck, `5` for missing or declined confirmation, and `129/130/143` for HUP/INT/TERM interruptions. APT updates stop even if only some repositories fail. A command failure is preserved even when `tee` succeeds in the output pipeline.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+Copyright (c) 2026 MrBearing.
+
+ROS 2 and the third-party packages installed by this script retain their respective licenses.
