@@ -1,4 +1,26 @@
 #!/bin/sh
+# MIT License
+#
+# Copyright (c) 2026 MrBearing
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
 # This is an unofficial installer, not an official ROS 2 installer.
 # POSIX sh; keep execution inside this block so an incomplete download cannot
 # start installing packages. Official procedure: https://docs.ros.org/
@@ -30,6 +52,7 @@ usage() {
     cat <<'USAGE'
 ROS 2 installer — Ubuntu LTS (amd64 / arm64)
 This is an UNOFFICIAL installer, not an official ROS 2 installer.
+Provided AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 Usage:
   curl -fsSL https://get-ros2.com/install.sh | sh
@@ -40,7 +63,7 @@ Options:
   --variant NAME      desktop / ros-base (default: desktop)
   --with-dev-tools    Also install ros-dev-tools
   --dry-run           Show planned commands without sudo, network access, or file changes
-  -y, --yes           Acknowledge the UNOFFICIAL installer notice and skip confirmation
+  -y, --yes           Accept the UNOFFICIAL / WITHOUT WARRANTY notice and skip confirmation
   -h, --help          Show this help
 
 Supported: Ubuntu 22.04 → Humble / 24.04 → Jazzy / 26.04 → Lyrical
@@ -125,6 +148,7 @@ detect_platform() {
 
 confirm_installation() {
     say 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
+    say 'Provided AS IS, WITHOUT WARRANTY OF ANY KIND.'
     [ "$DRY_RUN" -eq 0 ] || return 0
     if [ "$ASSUME_YES" -eq 1 ]; then
         say 'Proceeding with your explicit --yes confirmation.'
@@ -132,9 +156,9 @@ confirm_installation() {
     fi
     # Read from the controlling terminal, never from the script input stream.
     if ! ( : </dev/tty ) 2>/dev/null; then
-        die E_CONFIRMATION 'Confirmation requires an interactive terminal. Rerun from a terminal, or use --yes to explicitly accept the UNOFFICIAL installer notice.' 5
+        die E_CONFIRMATION 'Confirmation requires an interactive terminal. Rerun from a terminal, or use --yes to explicitly accept the UNOFFICIAL / WITHOUT WARRANTY notice.' 5
     fi
-    printf 'Continue installing ROS 2 %s with this UNOFFICIAL installer? [y/N] ' "$DISTRO" >/dev/tty ||
+    printf 'Continue installing ROS 2 %s with this UNOFFICIAL installer, provided WITHOUT WARRANTY? [y/N] ' "$DISTRO" >/dev/tty ||
         die E_CONFIRMATION 'Unable to display the confirmation prompt. No changes were made.' 5
     CONFIRMATION=''
     IFS= read -r CONFIRMATION </dev/tty || CONFIRMATION=''
@@ -196,7 +220,7 @@ diagnose_failure() {
     elif matches 'Could not resolve|Temporary failure resolving|Name or service not known|Could not resolve proxy'; then
         FAILURE_CODE=E_DNS
         FAILURE_HINT='Unable to resolve a hostname. Check DNS, network connectivity, and proxy settings.'
-    elif matches 'certificate verification failed|certificate verify failed|certificate[[:space:]:].*(not trusted|issuer|expired|not yet valid|problem)|SSL (certificate|peer)|TLS.*(error|failed|handshake)|Could not handshake|curl: \((35|60|77)\)'; then
+    elif matches 'certificate verification failed|certificate verify failed|certificate[[:space:]:].*(not trusted|issuer|expired|not yet valid|problem)|SSL (certificate|peer)|(^|[[:space:]:])TLS([[:space:]:]|v[0-9]).*(error|failed|handshake)|Could not handshake|curl: \((35|60|77)\)'; then
         FAILURE_CODE=E_TLS
         FAILURE_HINT='Unable to verify a TLS certificate. Check the system clock, ca-certificates, and any corporate proxy CA configuration. Do not disable certificate verification.'
     elif matches 'NO_PUBKEY|EXPKEYSIG|BADSIG|signatures couldn.t be verified|not signed|OpenPGP signature verification failed'; then
@@ -217,7 +241,7 @@ diagnose_failure() {
     elif matches 'Packages need to be removed but remove is disabled'; then
         FAILURE_CODE=E_REMOVAL_REQUIRED
         FAILURE_HINT='Installation stopped because it would remove existing packages. Preview the changes with sudo apt-get -s install ros-'"$DISTRO"'-'"$VARIANT"' and resolve missing OS updates or dependency problems.'
-    elif matches 'Unable to locate package|has no installation candidate|does not have a Release file|no longer has a Release file|404|curl: \(22\)'; then
+    elif matches 'Unable to locate package|has no installation candidate|does not have a Release file|no longer has a Release file|(^|[[:space:]])404([[:space:]]|$)|curl: \(22\)'; then
         FAILURE_CODE=E_REPOSITORY
         FAILURE_HINT='A package or repository is unavailable. Check the OS/ROS combination, APT sources, and HTTP status. For HTTP 403 or 429, also check proxy or server access limits.'
     elif matches 'Connection failed|Failed to fetch|Failed to connect|Could not connect|Connection timed out|Connection refused|Network is unreachable|curl: \((5|7|18|28|52|55|56)\)'; then

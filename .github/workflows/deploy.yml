@@ -1,10 +1,14 @@
 name: Deploy installer
 
 on:
-  workflow_run:
-    workflows: [CI Ubuntu 22.04, CI Ubuntu 24.04, CI Ubuntu 26.04]
-    types: [completed]
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published stable release tag to deploy
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -16,78 +20,80 @@ concurrency:
 jobs:
   gate:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-      (github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.head_branch == 'main' &&
-       github.event.workflow_run.head_repository.full_name == github.repository)
+      (github.event_name == 'release' &&
+       !github.event.release.draft && !github.event.release.prerelease) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: read
       actions: read
     outputs:
-      ready: ${{ steps.check.outputs.ready }}
       sha: ${{ steps.check.outputs.sha }}
+      tag: ${{ steps.check.outputs.tag }}
+      release_id: ${{ steps.check.outputs.release_id }}
     steps:
-      - name: Require all three CI workflows to pass for the current main commit
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify the release and CI for its tagged commit
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          CANDIDATE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-        run: |
-          current_sha=$(gh api "repos/$REPOSITORY/commits/main" --jq .sha)
-          if [ "$CANDIDATE_SHA" != "$current_sha" ]; then
-            echo 'A newer main commit exists; skipping this deployment.'
-            exit 0
-          fi
-          for workflow in ci-ubuntu-22-04.yml ci-ubuntu-24-04.yml ci-ubuntu-26-04.yml; do
-            conclusion=$(gh api --method GET "repos/$REPOSITORY/actions/workflows/$workflow/runs" \
-              -f branch=main -f event=push -f head_sha="$CANDIDATE_SHA" -f per_page=1 \
-              --jq '.workflow_runs[0].conclusion // "pending"')
-            if [ "$conclusion" != success ]; then
-              echo "$workflow: $conclusion; deployment requires all three workflows to pass."
-              exit 0
-            fi
-          done
-          echo 'ready=true' >> "$GITHUB_OUTPUT"
-          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+          EXPECTED_SHA: ${{ github.event_name == 'release' && github.sha || '' }}
+          EXPECTED_RELEASE_ID: ${{ github.event.release.id || '' }}
+        run: bash .github/scripts/verify-release.sh
 
   deploy:
-    if: needs.gate.outputs.ready == 'true'
     needs: gate
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the verification script from this workflow commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: deployment-workflow
+          persist-credentials: false
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.gate.outputs.sha }}
+          path: release-source
           persist-credentials: false
-      - name: Recheck main after any environment approval wait
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-          TESTED_SHA: ${{ needs.gate.outputs.sha }}
-        run: test "$(gh api "repos/$REPOSITORY/commits/main" --jq .sha)" = "$TESTED_SHA"
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Prepare the tested files
         run: |
           mkdir _site
-          cp install.sh README.md _site/
+          cp release-source/install.sh release-source/README.md release-source/LICENSE _site/
           touch _site/.nojekyll
           cd _site
           sha256sum install.sh > install.sh.sha256
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          include-hidden-files: true
+      - name: Recheck the release, tag and CI immediately before deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.gate.outputs.tag }}
+          EXPECTED_SHA: ${{ needs.gate.outputs.sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.gate.outputs.release_id }}
+        run: bash deployment-workflow/.github/scripts/verify-release.sh
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   check-published:
     needs: deploy

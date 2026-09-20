@@ -2,7 +2,9 @@
 
 A POSIX `sh` script that detects the operating system, version, and CPU architecture, then installs the corresponding ROS 2 LTS distribution from official APT packages.
 
-**This is an unofficial installer, not an official ROS 2 installer.**
+**This is an UNOFFICIAL installer, not an official ROS 2 installer.**
+
+**Provided AS IS, WITHOUT WARRANTY OF ANY KIND.**
 
 | Ubuntu | Repository CI | Published installer |
 | --- | --- | --- |
@@ -26,7 +28,7 @@ To check the exit status of the download as well as the installer, save the scri
 curl -fsSL https://get-ros2.com/install.sh -o install.sh && sh install.sh
 ```
 
-Before making changes, the installer states that it is unofficial and asks whether to continue. Enter `y` or `yes` to proceed. An empty answer, a negative answer, or end of input cancels installation. Confirmation is read from the controlling terminal, so it also works with `curl | sh`. If no terminal is available, installation stops unless you explicitly pass `--yes`. A dry run displays the notice without asking for confirmation.
+Before making changes, the installer states that it is UNOFFICIAL and provided WITHOUT WARRANTY, then asks whether to continue. Enter `y` or `yes` to proceed. An empty answer, a negative answer, or end of input cancels installation. Confirmation is read from the controlling terminal, so it also works with `curl | sh`. If no terminal is available, installation stops unless you explicitly pass `--yes`. A dry run displays the notice without asking for confirmation.
 
 To run a local copy:
 
@@ -68,10 +70,10 @@ curl -fsSL https://get-ros2.com/install.sh | sh -s -- --distro jazzy
 | `--variant desktop\|ros-base` | Select the metapackage to install; defaults to desktop |
 | `--with-dev-tools` | Also install `ros-dev-tools` |
 | `--dry-run` | Show planned commands without confirmation, sudo, network access, or file changes |
-| `-y`, `--yes` | Explicitly acknowledge the unofficial installer notice and skip the confirmation prompt |
+| `-y`, `--yes` | Explicitly acknowledge the UNOFFICIAL / WITHOUT WARRANTY notice and skip the confirmation prompt |
 | `--help` | Show help |
 
-For unattended use, explicitly acknowledge the unofficial installer notice:
+For unattended use, explicitly acknowledge the UNOFFICIAL / WITHOUT WARRANTY notice:
 
 ```sh
 curl -fsSL https://get-ros2.com/install.sh | sh -s -- --yes
@@ -113,3 +115,10 @@ External commands run with `LC_ALL=C`. The installer examines the failed step's 
 | `E_LOG` / `E_COMMAND` / `E_INTERRUPTED` | Log failure, unclassified command failure, or interruption |
 
 Exit codes: `0` for success, `1` for an operation failure, `2` for invalid arguments, `3` for an unsupported environment, `4` for a failed privilege precheck, `5` for missing or declined confirmation, and `129/130/143` for HUP/INT/TERM interruptions. APT updates stop even if only some repositories fail. A command failure is preserved even when `tee` succeeds in the output pipeline.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+Copyright (c) 2026 MrBearing.
+
+ROS 2 and the third-party packages installed by this script retain their respective licenses.

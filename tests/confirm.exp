@@ -9,7 +9,12 @@ expect {
     eof {puts stderr "Installer exited before the notice"; exit 1}
 }
 expect {
-    -exact {[y/N] } {}
+    -exact {Provided AS IS, WITHOUT WARRANTY OF ANY KIND.} {}
+    timeout {puts stderr "Missing warranty disclaimer"; exit 1}
+    eof {puts stderr "Installer exited before the warranty disclaimer"; exit 1}
+}
+expect {
+    -exact {with this UNOFFICIAL installer, provided WITHOUT WARRANTY? [y/N] } {}
     timeout {puts stderr "Missing confirmation prompt"; exit 1}
     eof {puts stderr "Installer exited before confirmation"; exit 1}
 }

@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Validate the test configuration
@@ -40,19 +40,20 @@ jobs:
             -e DEBIAN_FRONTEND=noninteractive -e INSTALLER_SOURCE \
             "ubuntu:$UBUNTU_VERSION" bash -euo pipefail -c '
               apt-get -o APT::Update::Error-Mode=any update
-              apt-get install -y --no-install-recommends shellcheck expect ca-certificates curl
+              apt-get install -y --no-install-recommends shellcheck expect ca-certificates curl jq
               if [[ "$INSTALLER_SOURCE" == published ]]; then
                 bash tests/fetch-installer.sh /tmp/installer-under-test.sh
               else
                 cp install.sh /tmp/installer-under-test.sh
               fi
               shellcheck --shell=sh /tmp/installer-under-test.sh
-              shellcheck --shell=bash tests/*.sh
+              shellcheck --shell=bash tests/*.sh .github/scripts/*.sh
+              bash tests/release-deploy.sh
               bash tests/run.sh /tmp/installer-under-test.sh
               cp /tmp/installer-under-test.sh /artifacts/install.sh
             '
       - name: Preserve the exact tested installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: installer-${{ inputs.ubuntu }}-${{ inputs.source }}
           path: _ci/install.sh
@@ -69,7 +70,7 @@ jobs:
       matrix:
         variant: [ros-base, desktop]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: installer-${{ inputs.ubuntu }}-${{ inputs.source }}
           path: installer

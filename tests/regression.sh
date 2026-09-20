@@ -3,7 +3,8 @@
 set -euo pipefail
 directory=$(cd -- "$(dirname -- "$0")" && pwd)
 installer=$(realpath "${1:-install.sh}")
-root=$(mktemp -d /tmp/get-ros2-regression.XXXXXXXX)
+# Keep misleading TLS/HTTP substrings in paths to catch diagnostic false positives.
+root=$(mktemp -d /tmp/get-ros2-regression.tlS404.XXXXXXXX)
 trap 'rm -rf -- "$root"' EXIT
 mkdir "$root/bin"
 cp "$directory/mock-command.sh" "$root/bin/mock"
@@ -95,6 +96,7 @@ pass 'variant, development tools and sudo'
 reset MOCK_UID=1000 MOCK_SUDO_DENIED=1
 run 0 /bin/sh "$root/install.sh" --dry-run
 contains stdout 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
+contains stdout 'Provided AS IS, WITHOUT WARRANTY OF ANY KIND.'
 absent stdout '[y/N]'
 read_only
 pass 'dry run without consent or changes'
@@ -123,6 +125,7 @@ for args in '--unknown' '--distro' '--variant invalid' '--distro rolling'; do
 done
 run 0 /bin/sh "$root/install.sh" --help
 contains stdout 'This is an UNOFFICIAL installer, not an official ROS 2 installer.'
+contains stdout 'Provided AS IS, WITHOUT WARRANTY OF ANY KIND.'
 [[ ! -s "$root/calls" ]]
 pass help
 
@@ -202,6 +205,7 @@ for flag in --yes -y; do
     reset
     run_pipe 0 /bin/sh "$flag"
     contains stdout 'explicit --yes confirmation'
+    contains stdout 'Provided AS IS, WITHOUT WARRANTY OF ANY KIND.'
     pass "explicit consent: $flag"
 done
 printf 'Passed %s shell regression cases\n' "$count"
