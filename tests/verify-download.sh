@@ -52,7 +52,9 @@ for source in pages release site; do
     if [[ $source == site ]]; then
         # Decode the HTML text shown and copied by the page without changing its shell code.
         sed -n '/<pre><code id="verify-command">/,/<\/code><\/pre>/p' "$directory/../index.html" |
-            sed 's/.*<code id="verify-command">//; s|</code></pre>.*||; s/\&amp;/\&/g' > "$sandbox/verify.sh"
+            sed -e 's|.*<code id="verify-command">||' \
+                -e 's|</code></pre>.*||' \
+                -e 's|\&amp;|\&|g' > "$sandbox/verify.sh"
         cmp "$sandbox/pages.sh" "$sandbox/verify.sh"
     else
         # Read the actual README command, replacing only the documented tag placeholder.
