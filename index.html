@@ -178,16 +178,19 @@
   <footer class="wrap"><p>get-ros2.com · An independent project by <a href="https://github.com/MrBearing">MrBearing</a></p><p><a href="LICENSE">MIT License</a> · UNOFFICIAL · WITHOUT WARRANTY</p></footer>
   <script>
     for (const button of document.querySelectorAll('[data-copy]')) {
+      const command = document.getElementById(button.dataset.copy);
+      const status = document.getElementById(`${button.dataset.copy}-status`);
+      if (!command || !status) continue;
       button.hidden = false;
       button.addEventListener('click', async () => {
-        const command = document.getElementById(button.dataset.copy);
-        const status = document.getElementById(`${button.dataset.copy}-status`);
         status.textContent = '';
         try {
           await navigator.clipboard.writeText(command.textContent);
           status.textContent = 'Command copied.';
         } catch {
+          status.textContent = 'Automatic copy is unavailable. Select and copy the command manually.';
           const selection = window.getSelection();
+          if (!selection) return;
           const range = document.createRange();
           range.selectNodeContents(command);
           selection.removeAllRanges();
