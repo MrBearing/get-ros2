@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Execute the documented verification commands with real hashes and mocked downloads.
+# Execute the README and landing page commands with real hashes and mocked downloads.
 set -euo pipefail
 directory=$(cd -- "$(dirname -- "$0")" && pwd)
 sandbox=$(mktemp -d /tmp/get-ros2-download-tests.XXXXXXXX)
@@ -24,7 +24,7 @@ url=$6
 [[ $7 == -o ]] || exit 99
 destination=$8
 case "$SOURCE" in
-    pages) prefix=https://get-ros2.com ;;
+    pages|site) prefix=https://get-ros2.com ;;
     release) prefix=https://github.com/MrBearing/get-ros2/releases/download/v1.2.3 ;;
     *) exit 99 ;;
 esac
@@ -48,13 +48,21 @@ fi
 MOCK
 chmod +x "$sandbox/bin/"*
 count=0
-for source in pages release; do
-    # Read the actual README command, replacing only the documented tag placeholder.
-    awk -v name="$source" '
-        $0 == "<!-- BEGIN verify-" name " -->" {inside=1; next}
-        $0 == "<!-- END verify-" name " -->" {exit}
-        inside && $0 !~ /^```/ {print}
-    ' "$directory/../README.md" | sed 's/vX.Y.Z/v1.2.3/g' > "$sandbox/verify.sh"
+for source in pages release site; do
+    if [[ $source == site ]]; then
+        # Decode the HTML text shown and copied by the page without changing its shell code.
+        sed -n '/<pre><code id="verify-command">/,/<\/code><\/pre>/p' "$directory/../index.html" |
+            sed 's/.*<code id="verify-command">//; s|</code></pre>.*||; s/\&amp;/\&/g' > "$sandbox/verify.sh"
+        cmp "$sandbox/pages.sh" "$sandbox/verify.sh"
+    else
+        # Read the actual README command, replacing only the documented tag placeholder.
+        awk -v name="$source" '
+            $0 == "<!-- BEGIN verify-" name " -->" {inside=1; next}
+            $0 == "<!-- END verify-" name " -->" {exit}
+            inside && $0 !~ /^```/ {print}
+        ' "$directory/../README.md" | sed 's/vX.Y.Z/v1.2.3/g' > "$sandbox/verify.sh"
+    fi
+    if [[ $source == pages ]]; then cp "$sandbox/verify.sh" "$sandbox/pages.sh"; fi
     [[ -s "$sandbox/verify.sh" ]]
     for shell in /bin/dash /bin/bash; do
         for scenario in valid altered_installer truncated_installer mismatched_checksum invalid_checksum empty_checksum installer_download_failure checksum_download_failure directory_failure; do
@@ -79,7 +87,7 @@ for source in pages release; do
                 [[ ! -s "$TEST_EXECUTED" ]] || { echo 'Installer ran after failed verification' >&2; exit 1; }
             fi
             count=$((count + 1))
-            printf 'ok %s - README verification: %s / %s / %s\n' "$count" "$source" "$shell" "$scenario"
+            printf 'ok %s - documented verification: %s / %s / %s\n' "$count" "$source" "$shell" "$scenario"
         done
     done
 done
