@@ -3,6 +3,7 @@
 set -euo pipefail
 directory=$(cd -- "$(dirname -- "$0")" && pwd)
 installer=$(realpath "${1:-install.sh}")
+script=${2:-install.sh}
 sandbox=$(mktemp -d /tmp/get-ros2-fetch.XXXXXXXX)
 trap 'rm -rf -- "$sandbox"' EXIT
 mkdir "$sandbox/bin"
@@ -10,7 +11,7 @@ cat > "$sandbox/bin/curl" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 [[ " $* " == *' --fail '* && " $* " == *' --location '* ]]
-[[ "${!#}" == https://get-ros2.com/install.sh ]]
+[[ "${!#}" == "https://get-ros2.com/$TEST_FETCH_SCRIPT" ]]
 while [[ "$1" != --output ]]; do shift; done
 case "$TEST_FETCH_CASE" in
     dns) echo 'curl: (6) Could not resolve host: get-ros2.com' >&2; exit 6 ;;
@@ -30,8 +31,8 @@ for spec in 'success 0' 'dns 6' 'http 22' 'timeout 28' 'empty 1' 'html 1' 'trunc
     # A stale local copy must not turn a failed download into a passing check.
     cp "$installer" "$sandbox/fetched.sh"
     status=0
-    TEST_FETCH_CASE=$scenario TEST_FETCH_SOURCE=$installer PATH="$sandbox/bin:$PATH" \
-        bash "$directory/fetch-installer.sh" "$sandbox/fetched.sh" \
+    TEST_FETCH_CASE=$scenario TEST_FETCH_SOURCE=$installer TEST_FETCH_SCRIPT=$script PATH="$sandbox/bin:$PATH" \
+        bash "$directory/fetch-installer.sh" "$sandbox/fetched.sh" "$script" \
         > "$sandbox/stdout" 2> "$sandbox/stderr" || status=$?
     if [[ "$status" != "$expected" ]]; then
         cat "$sandbox/stdout" "$sandbox/stderr" >&2

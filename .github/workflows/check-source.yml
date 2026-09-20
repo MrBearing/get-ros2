@@ -1,0 +1,75 @@
+name: Check a source-build environment
+
+on:
+  workflow_call:
+    inputs:
+      ubuntu:
+        required: true
+        type: string
+      source:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Source build (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select the source setup script
+        env:
+          INSTALLER_SOURCE: ${{ inputs.source }}
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+        run: |
+          case "$UBUNTU_VERSION" in 22.04|24.04|26.04) ;; *) exit 1 ;; esac
+          mkdir -p _ci/source-input
+          case "$INSTALLER_SOURCE" in
+            repository) cp setup-source.sh _ci/source-input/setup-source.sh ;;
+            published) bash tests/fetch-installer.sh _ci/source-input/setup-source.sh setup-source.sh ;;
+            *) exit 1 ;;
+          esac
+          sh -n _ci/source-input/setup-source.sh
+      - name: Prepare and build ROS 2 from source in a clean Ubuntu container
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+        run: |
+          docker run --name source-build --init \
+            -e SOURCE_BUILD_TEST_CONTAINER=1 -e DEBIAN_FRONTEND=noninteractive \
+            -v "$PWD:/workspace:ro" -w /workspace \
+            "ubuntu:$UBUNTU_VERSION" bash tests/source-build.sh /workspace/_ci/source-input/setup-source.sh
+      - name: Collect source revisions and build logs
+        if: always()
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+        run: |
+          case "$UBUNTU_VERSION" in
+            22.04) distro=humble ;;
+            24.04) distro=jazzy ;;
+            26.04) distro=lyrical ;;
+            *) exit 1 ;;
+          esac
+          mkdir -p _ci/source-build
+          docker logs source-build > _ci/source-build/container.log 2>&1 || true
+          for item in exact.repos log talker.log listener.log; do
+            docker cp "source-build:/home/builder/ros2_$distro/$item" _ci/source-build/ || true
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: source-build-${{ inputs.ubuntu }}-${{ matrix.arch }}
+          path: _ci/source-build
+          retention-days: 7

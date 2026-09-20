@@ -9,7 +9,14 @@ cp "$source_directory/install.sh" "$source_directory/README.md" "$source_directo
 if [[ -f "$source_directory/index.html" ]]; then
     cp "$source_directory/index.html" "$output_directory/"
 fi
+if [[ -f "$source_directory/setup-source.sh" ]]; then
+    cp "$source_directory/setup-source.sh" "$source_directory/SOURCE_BUILD.md" "$output_directory/"
+fi
 touch "$output_directory/.nojekyll"
 cd "$output_directory"
-sha256sum install.sh > install.sh.sha256
-sha256sum --check --strict install.sh.sha256
+for script in install.sh setup-source.sh; do
+    if [[ -f $script ]]; then
+        sha256sum "$script" > "$script.sha256"
+        sha256sum --check --strict "$script.sha256"
+    fi
+done

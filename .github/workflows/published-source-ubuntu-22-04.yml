@@ -1,0 +1,20 @@
+name: Published source Ubuntu 22.04
+
+on:
+  schedule:
+    - cron: '41 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: ./.github/workflows/check-source.yml
+    with:
+      ubuntu: '22.04'
+      source: published

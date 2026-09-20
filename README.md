@@ -143,6 +143,18 @@ ros2 --help
 
 For bash, use `source /opt/ros/jazzy/setup.bash`. For zsh, use `source /opt/ros/jazzy/setup.zsh`. To load ROS automatically, add the appropriate command to your shell's configuration file.
 
+## Build ROS 2 from source
+
+Use [setup-source.sh](setup-source.sh) to prepare a source-build environment instead of installing binary ROS 2 packages. It installs development tools and prepares rosdep, then prints the remaining checkout, dependency-resolution, and build commands. It does not build ROS 2 automatically.
+
+See the [source-build guide](SOURCE_BUILD.md) for supported environments, verification commands, options, and instructions. The source setup script displays the same UNOFFICIAL / WITHOUT WARRANTY notices and requires confirmation before changes.
+
+| Ubuntu | Published source-build setup |
+| --- | --- |
+| 22.04 | [![Published source Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml) |
+| 24.04 | [![Published source Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml) |
+| 26.04 | [![Published source Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml) |
+
 ## Errors and logs
 
 External commands run with `LC_ALL=C`. The installer examines the failed step's exit status and output, then displays guidance in English. Original command output is streamed to the terminal and saved in `/tmp/get-ros2.XXXXXXXX/install.log`. The log is readable and writable only by the invoking user and is retained after failures. Classification uses known output patterns; unrecognized failures are reported as `E_COMMAND` with a pointer to the original log.

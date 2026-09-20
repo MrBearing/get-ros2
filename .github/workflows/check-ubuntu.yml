@@ -47,10 +47,13 @@ jobs:
                 cp install.sh /tmp/installer-under-test.sh
               fi
               shellcheck --shell=sh /tmp/installer-under-test.sh
+              shellcheck --shell=sh setup-source.sh
               shellcheck --shell=bash tests/*.sh .github/scripts/*.sh
               bash tests/release-deploy.sh
               bash tests/release-assets.sh
               bash tests/verify-download.sh
+              bash tests/source-setup.sh
+              bash tests/fetch.sh setup-source.sh setup-source.sh
               bash tests/run.sh /tmp/installer-under-test.sh
               cp /tmp/installer-under-test.sh /artifacts/install.sh
             '
@@ -85,3 +88,11 @@ jobs:
             -v "$PWD/installer/install.sh:/installer/install.sh:ro" \
             "ubuntu:$UBUNTU_VERSION" sh -c \
             'cat /installer/install.sh | sh -s -- --yes --variant "$1"' sh "$ROS_VARIANT"
+
+  source-build:
+    if: inputs.source == 'repository'
+    needs: checks
+    uses: ./.github/workflows/check-source.yml
+    with:
+      ubuntu: ${{ inputs.ubuntu }}
+      source: repository

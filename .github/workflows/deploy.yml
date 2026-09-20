@@ -49,6 +49,8 @@ jobs:
 
   deploy:
     needs: gate
+    outputs:
+      has_source_setup: ${{ steps.prepare.outputs.has_source_setup }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -73,7 +75,12 @@ jobs:
           persist-credentials: false
       - uses: actions/configure-pages@v6
       - name: Prepare the tested files
-        run: bash deployment-workflow/.github/scripts/prepare-release.sh release-source _site
+        id: prepare
+        run: |
+          bash deployment-workflow/.github/scripts/prepare-release.sh release-source _site
+          if [[ -f _site/setup-source.sh ]]; then
+            echo 'has_source_setup=true' >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
@@ -117,5 +124,14 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           for workflow in published-ubuntu-22-04.yml published-ubuntu-24-04.yml published-ubuntu-26-04.yml; do
+            gh api --method POST "repos/$REPOSITORY/actions/workflows/$workflow/dispatches" -f ref=main
+          done
+      - name: Start the source-build checks when this release includes source setup
+        if: needs.deploy.outputs.has_source_setup == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          for workflow in published-source-ubuntu-22-04.yml published-source-ubuntu-24-04.yml published-source-ubuntu-26-04.yml; do
             gh api --method POST "repos/$REPOSITORY/actions/workflows/$workflow/dispatches" -f ref=main
           done
