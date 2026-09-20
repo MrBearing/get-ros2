@@ -20,6 +20,8 @@ Install ROS 2 with:
 curl -fsSL https://get-ros2.com/install.sh | sh
 ```
 
+To verify the downloaded file before running it, follow [Verify the download](#verify-the-download).
+
 `curl get-ros2.com/install.sh | sh` does not follow HTTP-to-HTTPS redirects. Use `https://` and `-fsSL`. The `-f` flag prevents HTTP error responses from being passed to the shell, and `-L` follows redirects.
 
 To check the exit status of the download as well as the installer, save the script before running it. A standard POSIX shell pipeline does not propagate a failure from curl on the left side of the pipe.
@@ -36,6 +38,54 @@ To run a local copy:
 sh install.sh --dry-run
 sh install.sh
 ```
+
+## Verify the download
+
+Each deployed release provides `install.sh` and `install.sh.sha256` on [get-ros2.com](https://get-ros2.com/install.sh.sha256) and in the **Assets** section of its [GitHub Release](https://github.com/MrBearing/get-ros2/releases). The checksum contains the SHA-256 hash of that release's installer.
+
+### Verify the currently deployed installer
+
+Run this on a supported Ubuntu system. It downloads both files into a new temporary directory and runs the downloaded installer only if every download and the checksum check succeed:
+
+<!-- BEGIN verify-pages -->
+```sh
+(
+  download_dir=$(mktemp -d) &&
+  cd "$download_dir" &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    https://get-ros2.com/install.sh -o install.sh &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    https://get-ros2.com/install.sh.sha256 -o install.sh.sha256 &&
+  sha256sum --check --strict install.sh.sha256 &&
+  sh ./install.sh
+)
+```
+<!-- END verify-pages -->
+
+### Verify a specific release
+
+Choose a published release and replace `vX.Y.Z` with its tag. Using one release tag for both downloads keeps the pair tied to that version even when the website is updated or rolled back.
+
+<!-- BEGIN verify-release -->
+```sh
+(
+  release_tag='vX.Y.Z'
+  release_url="https://github.com/MrBearing/get-ros2/releases/download/$release_tag"
+  download_dir=$(mktemp -d) &&
+  cd "$download_dir" &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    "$release_url/install.sh" -o install.sh &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    "$release_url/install.sh.sha256" -o install.sh.sha256 &&
+  sha256sum --check --strict install.sh.sha256 &&
+  sh ./install.sh
+)
+```
+<!-- END verify-release -->
+
+A successful check prints `install.sh: OK`. If the check fails, installation stops. Download a matching pair from the same release and verify again; do not bypass the failed check. Append installer options to the final `sh ./install.sh` command if needed.
+
+A checksum verifies that the downloaded file matches the published checksum. It is **not a digital signature** and does not independently authenticate the publisher: someone able to replace both files could publish a matching checksum for an altered script.
 
 ## Supported environments
 

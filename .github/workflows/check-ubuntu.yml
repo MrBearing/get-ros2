@@ -49,6 +49,8 @@ jobs:
               shellcheck --shell=sh /tmp/installer-under-test.sh
               shellcheck --shell=bash tests/*.sh .github/scripts/*.sh
               bash tests/release-deploy.sh
+              bash tests/release-assets.sh
+              bash tests/verify-download.sh
               bash tests/run.sh /tmp/installer-under-test.sh
               cp /tmp/installer-under-test.sh /artifacts/install.sh
             '
