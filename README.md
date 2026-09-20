@@ -2,6 +2,8 @@
 
 A POSIX `sh` script that detects the operating system, version, and CPU architecture, then installs the corresponding ROS 2 LTS distribution from official APT packages.
 
+Visit [get-ros2.com](https://get-ros2.com/) for installation commands, supported environments, and checksum verification instructions.
+
 **This is an UNOFFICIAL installer, not an official ROS 2 installer.**
 
 **Provided AS IS, WITHOUT WARRANTY OF ANY KIND.**

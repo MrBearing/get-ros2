@@ -8,8 +8,11 @@ trap 'rm -r -- "$sandbox"' EXIT
 mkdir "$sandbox/bin" "$sandbox/source files" "$sandbox/server"
 printf '#!/bin/sh\nprintf "test installer\\n"\n' > "$sandbox/source files/install.sh"
 cp "$directory/../README.md" "$directory/../LICENSE" "$sandbox/source files/"
+cp "$directory/../index.html" "$sandbox/source files/"
+# Make the tagged page distinct from the workflow checkout's page.
+printf '\n<!-- Release fixture -->\n' >> "$sandbox/source files/index.html"
 bash "$scripts/prepare-release.sh" "$sandbox/source files" "$sandbox/site files" > "$sandbox/preparation.log"
-for name in install.sh README.md LICENSE; do
+for name in install.sh README.md LICENSE index.html; do
     cmp "$sandbox/source files/$name" "$sandbox/site files/$name"
 done
 [[ -f "$sandbox/site files/.nojekyll" ]]
@@ -18,6 +21,13 @@ if bash "$scripts/prepare-release.sh" "$sandbox/source files" "$sandbox/site fil
     echo 'Preparation reused an existing output directory' >&2
     exit 1
 fi
+# A rollback to a release without a page must preserve its original download files.
+rm -- "$sandbox/source files/index.html"
+bash "$scripts/prepare-release.sh" "$sandbox/source files" "$sandbox/legacy site" > "$sandbox/legacy.log"
+[[ ! -e "$sandbox/legacy site/index.html" ]]
+for name in install.sh install.sh.sha256 README.md LICENSE; do
+    cmp "$sandbox/site files/$name" "$sandbox/legacy site/$name"
+done
 export TEST_SERVER=$sandbox/server TEST_UPLOADS=$sandbox/uploads TEST_DELETES=$sandbox/deletes
 cat > "$sandbox/bin/gh" <<'MOCK'
 #!/usr/bin/env bash

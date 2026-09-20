@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An unofficial ROS 2 installer for Ubuntu. Check supported environments, verify the download, and install the matching ROS 2 LTS distribution.">
+  <meta name="theme-color" content="#173e32">
+  <meta property="og:title" content="get-ros2.com — Install ROS 2 on Ubuntu">
+  <meta property="og:description" content="An unofficial ROS 2 installer for Ubuntu. Find installation commands, supported environments, and checksum verification instructions. Provided WITHOUT WARRANTY.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://get-ros2.com/">
+  <title>get-ros2.com — Install ROS 2 on Ubuntu</title>
+  <style>
+    :root { color-scheme: light; --paper: #f6f5ef; --ink: #172e26; --muted: #526258; --green: #173e32; --line: #d5dacf; --mint: #c4e8b3; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 1rem/1.65 system-ui, sans-serif; }
+    a { color: inherit; text-underline-offset: .22em; }
+    a:hover { text-decoration-thickness: .13em; }
+    :focus-visible { outline: 3px solid #ba501e; outline-offset: 5px; }
+    .wrap { width: min(1120px, calc(100% - 48px)); margin-inline: auto; }
+    .skip { position: absolute; top: -100px; left: 20px; padding: 12px; background: white; z-index: 2; }
+    .skip:focus { top: 12px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 26px; border-bottom: 1px solid var(--line); }
+    .brand { font: bold 1.15rem ui-monospace, monospace; text-decoration: none; letter-spacing: -.04em; white-space: nowrap; }
+    .brand::before { content: ">_"; color: var(--green); margin-right: 12px; }
+    nav { display: flex; gap: 24px; flex-wrap: wrap; font-size: .875rem; }
+    nav a { text-decoration: none; }
+    .hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 64px; padding-block: 76px 54px; align-items: end; }
+    .eyebrow, .label { font: 700 .73rem/1.5 ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .eyebrow { color: var(--green); margin: 0 0 22px; }
+    h1 { font-size: clamp(3.5rem, 7vw, 5.7rem); letter-spacing: -.065em; line-height: 1.03; font-weight: 650; margin: 0; }
+    h1 span { color: #427353; }
+    .intro { font-size: 1.14rem; color: var(--muted); margin: 0 0 24px; max-width: 44ch; }
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { border: 1px solid #bac8b6; padding: 4px 12px; border-radius: 30px; font: .75rem/1.7 ui-monospace, monospace; }
+    .notice { background: #eee6d3; border-left: 4px solid #9d481c; padding: 18px 24px; margin-bottom: 28px; }
+    .notice p { margin: 0; font-size: .875rem; }
+    .notice strong { color: #733713; }
+    .terminal { background: #152d24; color: #f1f5ed; padding: 28px 32px; border-radius: 8px; }
+    .terminal-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .terminal .label { color: #bfcec0; }
+    button { font: 600 .8rem/1.5 system-ui, sans-serif; cursor: pointer; min-height: 44px; border: 1px solid #8ca08d; padding: 9px 16px; background: transparent; color: inherit; border-radius: 4px; }
+    button:hover { background: #2e4e3c; }
+    button:focus-visible { outline-color: #d9f3a7; }
+    [hidden] { display: none !important; }
+    pre { margin: 26px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: .95rem/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .install-command { font-size: clamp(.92rem, 2.1vw, 1.35rem); color: var(--mint); }
+    .terminal-bottom { display: flex; gap: 20px; justify-content: space-between; align-items: baseline; flex-wrap: wrap; font-size: .8rem; color: #c2d0c4; }
+    .terminal-bottom p { margin: 0; }
+    .status { min-height: 1.65em; }
+    .under-command { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 16px 0 0; font-size: .875rem; color: var(--muted); }
+    section { scroll-margin-top: 24px; }
+    .section { padding-block: 60px; border-bottom: 1px solid var(--line); }
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    h2 { font-size: clamp(1.7rem, 3vw, 2.25rem); font-weight: 600; letter-spacing: -.045em; margin: 0; line-height: 1.2; }
+    .section-heading .label { color: var(--muted); white-space: nowrap; }
+    table { border-collapse: collapse; width: 100%; text-align: left; }
+    caption { text-align: left; color: var(--muted); padding-bottom: 20px; }
+    th, td { padding: 18px 12px; border-bottom: 1px solid var(--line); }
+    thead th { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    tbody th { font-weight: 550; }
+    td:last-child { font: .8rem/1.6 ui-monospace, monospace; }
+    .distro { display: inline-block; min-width: 90px; padding: 3px 12px; background: #e0ead8; border-radius: 4px; font-weight: 600; }
+    .support-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; font-size: .875rem; color: var(--muted); margin-top: 16px; }
+    .verify-intro { max-width: 78ch; color: var(--muted); }
+    .verify-result { color: var(--muted); font-size: .875rem; }
+    .resources { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 28px; }
+    .resource { border-top: 2px solid var(--green); padding-top: 18px; }
+    .resource a { font-weight: 650; font-size: 1.05rem; }
+    .resource p { margin: 8px 0 0; color: var(--muted); font-size: .875rem; }
+    footer { padding-block: 28px 40px; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
+    footer p { margin: 0; }
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; gap: 28px; padding-block: 44px 32px; }
+      .intro { max-width: 55ch; }
+      .section { padding-block: 40px; }
+      .support-notes, .resources { grid-template-columns: 1fr; gap: 16px; }
+      .section-heading { align-items: start; }
+      .terminal { padding: 20px; }
+    }
+    @media (max-width: 480px) {
+      .wrap { width: calc(100% - 32px); }
+      header { align-items: start; flex-direction: column; gap: 16px; }
+      nav { gap: 20px; }
+      .notice { padding: 14px 16px; }
+      th, td { padding: 14px 6px; font-size: .85rem; }
+      td:last-child { font-size: .7rem; }
+      .distro { min-width: auto; padding: 3px 8px; }
+      .section-heading { flex-direction: column; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="wrap">
+    <a class="brand" href="./" aria-label="get-ros2.com home">get-ros2.com</a>
+    <nav aria-label="Main navigation">
+      <a href="#supported">Compatibility</a>
+      <a href="#verify">Verify download</a>
+      <a href="https://github.com/MrBearing/get-ros2">GitHub ↗</a>
+    </nav>
+  </header>
+  <main id="main" class="wrap">
+    <div class="hero">
+      <div>
+        <p class="eyebrow">A ROS 2 installer for Ubuntu</p>
+        <h1>ROS 2.<br><span>Get started.</span></h1>
+      </div>
+      <div>
+        <p class="intro">Install ROS 2 with a single command. The script detects your Ubuntu version and CPU architecture, then installs the matching ROS 2 LTS distribution using official APT packages.</p>
+        <div class="tags" aria-label="Installer features"><span class="tag">POSIX sh</span><span class="tag">Ubuntu LTS</span><span class="tag">Open source · MIT</span></div>
+      </div>
+    </div>
+
+    <aside class="notice" aria-label="Unofficial installer and warranty notice">
+      <p><strong>UNOFFICIAL INSTALLER · WITHOUT WARRANTY</strong><br>This is not an official ROS 2 installer. It is provided AS IS, WITHOUT WARRANTY OF ANY KIND. Review the script before running it. The installer asks for confirmation before making changes to your system.</p>
+    </aside>
+
+    <section aria-labelledby="install-heading">
+      <div class="terminal">
+        <div class="terminal-bar"><h2 id="install-heading" class="label">Install in your terminal</h2><button type="button" data-copy="install-command" aria-label="Copy installation command" hidden>Copy command</button></div>
+        <pre class="install-command"><code id="install-command">curl -fsSL https://get-ros2.com/install.sh | sh</code></pre>
+        <div class="terminal-bottom"><p>Want to inspect it first? <a href="install.sh">Read install.sh</a></p><p class="status" id="install-command-status" role="status" aria-live="polite"></p></div>
+      </div>
+      <p class="under-command"><span>Requires internet access, a working APT configuration, and root or sudo privileges.</span><a href="#verify">Verify the download before installing ↓</a></p>
+      <noscript><p>JavaScript is disabled. Select and copy the displayed commands manually.</p></noscript>
+    </section>
+
+    <section id="supported" class="section" aria-labelledby="supported-heading">
+      <div class="section-heading"><h2 id="supported-heading">Supported environments</h2><span class="label">01 / Compatibility</span></div>
+      <table>
+        <caption>Supported environments and automatically selected ROS 2 distributions.</caption>
+        <thead><tr><th scope="col">Ubuntu</th><th scope="col">ROS 2</th><th scope="col">Architecture</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">22.04 LTS</th><td><span class="distro">Humble</span></td><td>amd64 / arm64</td></tr>
+          <tr><th scope="row">24.04 LTS</th><td><span class="distro">Jazzy</span></td><td>amd64 / arm64</td></tr>
+          <tr><th scope="row">26.04 LTS</th><td><span class="distro">Lyrical</span></td><td>amd64 / arm64</td></tr>
+        </tbody>
+      </table>
+      <div class="support-notes">
+        <p><strong>The default installation includes RViz and demos.</strong> For servers and containers, use <code>--variant ros-base</code>. Preview the planned changes with <code>--dry-run</code>. See the <a href="README.md">README</a> for all available options.</p>
+        <p><strong>Using Windows?</strong> Run the script inside a supported Ubuntu installation on WSL 2. This script does not support native Windows, macOS, other Linux distributions, or 32-bit environments. See the <a href="https://www.ros.org/blog/getting-started/">official ROS 2 installation instructions</a> for other platforms.</p>
+      </div>
+    </section>
+
+    <section id="verify" class="section" aria-labelledby="verify-heading">
+      <div class="section-heading"><h2 id="verify-heading">Inspect. Verify. Install.</h2><span class="label">02 / SHA-256</span></div>
+      <p class="verify-intro">Run the commands below on a supported Ubuntu system to download the installer and its checksum file into a temporary directory. The installer runs only if both downloads and the checksum check succeed.</p>
+      <div class="terminal">
+        <div class="terminal-bar"><span class="label">Verify and install</span><button type="button" data-copy="verify-command" aria-label="Copy verification command" hidden>Copy command</button></div>
+        <pre><code id="verify-command">(
+  download_dir=$(mktemp -d) &amp;&amp;
+  cd "$download_dir" &amp;&amp;
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    https://get-ros2.com/install.sh -o install.sh &amp;&amp;
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    https://get-ros2.com/install.sh.sha256 -o install.sh.sha256 &amp;&amp;
+  sha256sum --check --strict install.sh.sha256 &amp;&amp;
+  sh ./install.sh
+)</code></pre>
+        <div class="terminal-bottom"><a href="install.sh.sha256">View the SHA-256 checksum</a><p class="status" id="verify-command-status" role="status" aria-live="polite"></p></div>
+      </div>
+      <p class="verify-result">A successful check prints <code>install.sh: OK</code>. If verification fails, stop and download the installer and checksum file from the same release. Do not bypass the check.</p>
+      <p class="verify-result">The version available on this website may differ from the latest GitHub release. To install a specific version, download both files from that release's <strong>Assets</strong> section and follow the “Verify a specific release” instructions in the <a href="README.md">README</a>.</p>
+      <p class="verify-result">A checksum is <strong>not a digital signature</strong>. It verifies that the file matches the published hash, but does not independently verify the publisher's identity. Someone who can replace both files could provide a matching checksum for an altered installer.</p>
+    </section>
+
+    <section class="section" aria-labelledby="resources-heading">
+      <div class="section-heading"><h2 id="resources-heading">Releases, docs, and support</h2><span class="label">03 / Resources</span></div>
+      <div class="resources">
+        <div class="resource"><a href="https://github.com/MrBearing/get-ros2/releases/latest">Latest release ↗</a><p>Download the installer and checksum file from the latest release's Assets section.</p></div>
+        <div class="resource"><a href="README.md">See README →</a><p>Find installer options, instructions for setting up your shell, and troubleshooting guidance for the version on this website.</p></div>
+        <div class="resource"><a href="https://github.com/MrBearing/get-ros2/issues">Report an issue ↗</a><p>Found a problem? Share your Ubuntu version, architecture, and relevant error output.</p></div>
+      </div>
+    </section>
+  </main>
+  <footer class="wrap"><p>get-ros2.com · An independent project by <a href="https://github.com/MrBearing">MrBearing</a></p><p><a href="LICENSE">MIT License</a> · UNOFFICIAL · WITHOUT WARRANTY</p></footer>
+  <script>
+    for (const button of document.querySelectorAll('[data-copy]')) {
+      const command = document.getElementById(button.dataset.copy);
+      const status = document.getElementById(`${button.dataset.copy}-status`);
+      if (!command || !status) continue;
+      button.hidden = false;
+      button.addEventListener('click', async () => {
+        status.textContent = '';
+        try {
+          await navigator.clipboard.writeText(command.textContent);
+          status.textContent = 'Command copied.';
+        } catch {
+          status.textContent = 'Automatic copy is unavailable. Select and copy the command manually.';
+          const selection = window.getSelection();
+          if (!selection) return;
+          const range = document.createRange();
+          range.selectNodeContents(command);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          status.textContent = 'Automatic copy is unavailable. The command is selected; copy it manually.';
+        }
+      });
+    }
+  </script>
+</body>
+</html>
