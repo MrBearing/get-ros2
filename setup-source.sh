@@ -312,8 +312,17 @@ apt_install() {
 setup_repository() {
     if [ "$DRY_RUN" -eq 0 ] &&
         [ "$(dpkg-query -W -f='${db:Status-Status}' ros2-apt-source 2>/dev/null)" = installed ]; then
-        say 'Using the installed ros2-apt-source package.'
-        return 0
+        REPOSITORY_VERSION=$(dpkg-query -W -f='${Version}' ros2-apt-source 2>/dev/null)
+        case "$REPOSITORY_VERSION" in
+            *"~$CODENAME")
+                if [ -r /etc/apt/sources.list.d/ros2.sources ] &&
+                    grep -Eq "^Suites:[[:space:]]+$CODENAME[[:space:]]*$" /etc/apt/sources.list.d/ros2.sources &&
+                    ! grep -Eiq '^Enabled:[[:space:]]+no[[:space:]]*$' /etc/apt/sources.list.d/ros2.sources; then
+                    say 'Using the installed ros2-apt-source package for this Ubuntu release.'
+                    return 0
+                fi ;;
+        esac
+        say 'Refreshing the ROS 2 repository configuration for this Ubuntu release.'
     fi
     BOOTSTRAP_URL=https://github.com/ros-infrastructure/ros-apt-source/releases/download/$BOOTSTRAP_VERSION/ros2-apt-source_$BOOTSTRAP_VERSION.${CODENAME}_all.deb
     BOOTSTRAP_FILE=${WORK_DIR:-/tmp/get-ros2-source.DRY-RUN}/ros2-apt-source.deb

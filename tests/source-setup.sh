@@ -22,7 +22,9 @@ fi
 case "$name" in
     uname) echo "$KERNEL" ;;
     dpkg) if [[ $* == --print-architecture ]]; then echo "$ARCH"; fi ;;
-    dpkg-query) [[ $EXISTING_APT == 1 ]] || exit 1; echo installed ;;
+    dpkg-query)
+        [[ $EXISTING_APT == 1 ]] || exit 1
+        if [[ $* == *'${Version}'* ]]; then echo "$APT_VERSION"; else echo installed; fi ;;
     id)
         if [[ $1 == -un ]]; then echo developer
         elif [[ $# == 2 ]]; then echo 1000
@@ -54,6 +56,7 @@ export PATH="$root/bin:$PATH"
 sha=$(printf 'test repository package\n' | sha256sum); sha=${sha%% *}
 sed -E -e "s|/etc/os-release|$root/os-release|g" \
     -e "s|/etc/ros/rosdep/sources.list.d/20-default.list|$root/rosdep-default.list|g" \
+    -e "s|/etc/apt/sources.list.d/ros2.sources|$root/ros2.sources|g" \
     -e "s|/tmp/get-ros2-source\.|$root/run.|g" \
     -e "s/BOOTSTRAP_SHA256=[a-f0-9]{64}/BOOTSTRAP_SHA256=$sha/g" "$installer" > "$root/setup.sh"
 reset() {
@@ -62,12 +65,14 @@ KERNEL=Linux
 ARCH=amd64
 USER_ID=1000
 EXISTING_APT=0
+APT_VERSION=1.3.0~noble
 FAIL_TOOL=''
 FAIL_MATCH=''
 FAIL_TEXT='Connection timed out'
 CONFIG
     printf '%s\n' "$@" >> "$root/config"
     printf 'ID=ubuntu\nVERSION_ID=24.04\nVERSION_CODENAME=noble\n' > "$root/os-release"
+    printf 'Suites: noble\n' > "$root/ros2.sources"
     find "$root" -maxdepth 1 -name 'run.*' -type d -exec rm -r -- {} +
     rm -f "$root/rosdep-default.list" "$HOME/cache-updated"
     : > "$root/calls"
@@ -140,6 +145,19 @@ absent calls 'rosdep init'
 absent calls 'curl --'
 contains calls 'rosdep update'
 pass 'repeat run preserves existing configuration'
+for scenario in old_package missing_source disabled_source old_suite; do
+    reset EXISTING_APT=1
+    case "$scenario" in
+        old_package) printf 'APT_VERSION=1.3.0~jammy\n' >> "$root/config" ;;
+        missing_source) rm "$root/ros2.sources" ;;
+        disabled_source) printf 'Enabled: no\n' >> "$root/ros2.sources" ;;
+        old_suite) printf 'Suites: jammy\n' > "$root/ros2.sources" ;;
+    esac
+    run 0 sh "$root/setup.sh" --yes
+    contains calls 'ros2-apt-source_1.3.0.noble_all.deb'
+    contains calls 'dpkg --install'
+    pass "refresh repository after Ubuntu upgrade: $scenario"
+done
 for args in '--distro' '--distro rolling' '--variant desktop'; do
     reset
     read -ra arguments <<< "$args"

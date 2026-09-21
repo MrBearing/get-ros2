@@ -141,7 +141,7 @@ The talker should print `Publishing:` and the listener should print `I heard:`. 
 
 ## Existing environments and repeat runs
 
-- Installed development packages and the ROS APT configuration are reused. APT may upgrade requested packages but is not allowed to remove packages automatically.
+- Installed development packages and matching, enabled ROS APT configuration are reused. If the repository package targets another Ubuntu release, or its source file is missing, disabled, or targets another suite, setup reinstalls the configuration package for the detected Ubuntu release. APT may upgrade requested packages but is not allowed to remove packages automatically.
 - Existing rosdep source configuration is preserved; failures are not treated as successful initialization.
 - rosdep cache updates run as the development user. If invoked through sudo, setup uses the verified sudo user and their home directory. Direct root execution prepares root's cache, which is appropriate for a root-only container; other developers must run `rosdep update --rosdistro DISTRO` themselves.
 - The script does not edit shell startup files, delete existing ROS installations, or change workspace contents.
