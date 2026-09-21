@@ -93,6 +93,8 @@ for shell in /bin/dash /bin/bash; do
             contains calls 'ros-dev-tools'
             contains calls "rosdep update --rosdistro $distro"
             contains stdout "ROS 2 $distro source-build environment setup completed."
+            contains calls 'locale-gen en_US.UTF-8'
+            contains stdout 'export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8'
             absent calls "ros-$distro-desktop"
             absent calls 'vcs import'
             absent calls 'colcon build'

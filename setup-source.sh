@@ -366,8 +366,7 @@ prepare_source_environment() {
     apt_update 'Update Ubuntu package indexes'
     apt_install 'Install prerequisite packages' ca-certificates curl locales software-properties-common
     run_root 'Generate the UTF-8 locale' locale-gen en_US.UTF-8
-    LANG=en_US.UTF-8
-    export LANG
+    # Keep setup diagnostics in C; the printed build steps activate the generated locale.
     run_root 'Enable Ubuntu Universe' add-apt-repository --yes --no-update universe
     setup_repository
     apt_update 'Update package indexes including ROS 2'
@@ -412,6 +411,7 @@ next_steps() {
     say 'Run as your normal user in a NEW workspace. Keep Ubuntu packages up to date.'
     cat <<STEPS
 
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 mkdir -p "\$HOME/ros2_$DISTRO/src" &&
 cd "\$HOME/ros2_$DISTRO" &&
 curl -fL --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/ros2/ros2/$DISTRO/ros2.repos -o ros2.repos &&

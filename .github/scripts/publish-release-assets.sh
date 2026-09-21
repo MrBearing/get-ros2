@@ -13,7 +13,11 @@ names=()
 checksums=()
 for script in "${scripts[@]}"; do
     expected=$(cd "$site_directory" && sha256sum "$script") || fail "Missing prepared script: $script."
-    [[ $(cat "$site_directory/$script.sha256") == "$expected" ]] ||
+    [[ -f $site_directory/$script.sha256 && -r $site_directory/$script.sha256 ]] ||
+        fail "Missing or unreadable prepared checksum: $script.sha256."
+    manifest=$(cat "$site_directory/$script.sha256") ||
+        fail "Unable to read prepared checksum: $script.sha256."
+    [[ $manifest == "$expected" ]] ||
         fail "The local checksum must match $script and name only $script."
     (cd "$site_directory" && sha256sum --check --strict "$script.sha256")
     names+=("$script" "$script.sha256")

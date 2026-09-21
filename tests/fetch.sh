@@ -47,4 +47,11 @@ for spec in 'success 0' 'dns 6' 'http 22' 'timeout 28' 'empty 1' 'html 1' 'trunc
     count=$((count + 1))
     printf 'ok %s - download handling: %s\n' "$count" "$scenario"
 done
+status=0
+PATH="$sandbox/bin:$PATH" bash "$directory/fetch-installer.sh" "$sandbox/fetched.sh" invalid.sh \
+    > "$sandbox/stdout" 2> "$sandbox/stderr" || status=$?
+[[ $status == 2 ]]
+grep -Fxq 'Unsupported script name: invalid.sh. Allowed: install.sh, setup-source.sh.' "$sandbox/stderr"
+count=$((count + 1))
+printf 'ok %s - download handling: unsupported script\n' "$count"
 printf 'Passed %s download handling cases\n' "$count"

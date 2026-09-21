@@ -26,6 +26,8 @@ esac
 runuser -u builder -- env DISTRO="$distro" SKIP_KEYS="$skip" bash <<'BUILD'
 set -euo pipefail
 cd "$HOME"
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+[[ $(locale charmap) == UTF-8 ]]
 mkdir -p "ros2_$DISTRO/src"
 cd "ros2_$DISTRO"
 curl -fL --proto '=https' --proto-redir '=https' "https://raw.githubusercontent.com/ros2/ros2/$DISTRO/ros2.repos" -o ros2.repos

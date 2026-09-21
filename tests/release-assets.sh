@@ -223,6 +223,11 @@ run_case source_starter_retry 0 4 '' 1
 clear_assets
 run_case second_upload_failure 1 2 'Unable to upload'
 run_case both_scripts_partial_retry 0 3
+rm -- "$sandbox/site files/setup-source.sh.sha256"
+run_case missing_source_checksum 1 0 'Missing or unreadable prepared checksum: setup-source.sh.sha256.'
+mkdir "$sandbox/site files/setup-source.sh.sha256"
+run_case non_file_source_checksum 1 0 'Missing or unreadable prepared checksum: setup-source.sh.sha256.'
+rmdir "$sandbox/site files/setup-source.sh.sha256"
 printf 'bad manifest\n' > "$sandbox/site files/setup-source.sh.sha256"
 run_case invalid_source_checksum 1 0 'local checksum must match setup-source.sh'
 clear_assets

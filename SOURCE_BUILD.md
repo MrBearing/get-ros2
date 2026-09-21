@@ -94,9 +94,10 @@ Success prints `setup-source.sh: OK`. A failed check stops setup; obtain a match
 
 Use a **fresh shell without any ROS installation sourced**, including automatic sourcing in `.bashrc`. Existing binary installations can stay installed, but must not be loaded into the build environment. The setup script prints commands for your detected distribution.
 
-The example below uses Jazzy on Ubuntu 24.04. Change `distro` to `humble` on Ubuntu 22.04 or `lyrical` on Ubuntu 26.04. Run as your normal user in a **new workspace**; existing checkouts are not automatically replaced or repaired.
+The example below uses Jazzy on Ubuntu 24.04. Change `distro` to `humble` on Ubuntu 22.04 or `lyrical` on Ubuntu 26.04. Run as your normal user in a **new workspace**; existing checkouts are not automatically replaced or repaired. Setup generates `en_US.UTF-8` but keeps its own diagnostics in English and does not change your login locale. The exports below activate UTF-8 for the build shell, including systems whose default locale is `C`. Repeat them in each new build shell.
 
 ```sh
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 distro=jazzy
 case "$distro" in
   humble|jazzy) skip_keys='fastcdr rti-connext-dds-6.0.1 urdfdom_headers' ;;
