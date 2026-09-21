@@ -316,7 +316,7 @@ setup_repository() {
         case "$REPOSITORY_VERSION" in
             *"~$CODENAME")
                 if [ -r /etc/apt/sources.list.d/ros2.sources ] &&
-                    grep -Eq "^Suites:[[:space:]]+$CODENAME[[:space:]]*$" /etc/apt/sources.list.d/ros2.sources &&
+                    grep -Eq "^Suites:[[:space:]]+${CODENAME}[[:space:]]*$" /etc/apt/sources.list.d/ros2.sources &&
                     ! grep -Eiq '^Enabled:[[:space:]]+no[[:space:]]*$' /etc/apt/sources.list.d/ros2.sources; then
                     say 'Using the installed ros2-apt-source package for this Ubuntu release.'
                     return 0
