@@ -57,8 +57,6 @@ for source in pages release site source-pages source-release; do
     name=$source
     if [[ $source == source-* ]]; then
         script=setup-source.sh
-        document=$directory/../SOURCE_BUILD.md
-        name=${source#source-}
     fi
     if [[ $source == site ]]; then
         # Decode the HTML text shown and copied by the page without changing its shell code.

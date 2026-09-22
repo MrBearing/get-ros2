@@ -147,7 +147,15 @@ For bash, use `source /opt/ros/jazzy/setup.bash`. For zsh, use `source /opt/ros/
 
 Use [setup-source.sh](setup-source.sh) to prepare a source-build environment instead of installing binary ROS 2 packages. It installs development tools and prepares rosdep, then prints the remaining checkout, dependency-resolution, and build commands. It does not build ROS 2 automatically.
 
-See the [source-build guide](SOURCE_BUILD.md) for supported environments, verification commands, options, and instructions. The source setup script displays the same UNOFFICIAL / WITHOUT WARRANTY notices and requires confirmation before changes.
+The source setup script supports the same [Ubuntu/ROS 2 pairs and architectures](#supported-environments) listed above. Run it as your normal development user with a writable home directory and sudo access:
+
+```sh
+curl -fsSL https://get-ros2.com/setup-source.sh | sh
+```
+
+**This is an UNOFFICIAL setup script, provided WITHOUT WARRANTY OF ANY KIND.** It asks for confirmation before modifying the system. The supported options are `--distro humble|jazzy|lyrical`, `--dry-run`, `--yes` / `-y`, and `--help` / `-h`. Without a controlling terminal, explicit acknowledgement with `--yes` is required. A dry run makes no changes.
+
+Setup installs development tools through APT, configures the ROS repository, generates the UTF-8 locale, and initializes/updates rosdep. Source checkout, workspace dependencies, and compilation remain separate steps. `install.sh --with-dev-tools` installs binary ROS 2 with development tools; use `setup-source.sh` when building ROS 2 itself.
 
 The workflows below build the C++ and Python demos and their required dependencies from source on amd64 and arm64, then verify talker/listener communication. Repository CI badges show the overall OS workflow result, including source builds and installer checks. Published source-build badges show results for the script downloaded from get-ros2.com. Click a badge to view runs and build logs.
 
@@ -156,6 +164,73 @@ The workflows below build the C++ and Python demos and their required dependenci
 | 22.04 / Humble | [![Repository CI including source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml?query=branch%3Amain) |
 | 24.04 / Jazzy | [![Repository CI including source builds on Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-24-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-24-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml?query=branch%3Amain) |
 | 26.04 / Lyrical | [![Repository CI including source builds on Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml?query=branch%3Amain) |
+
+### Verify the source setup script
+
+#### Website version
+
+Both the script and its SHA-256 checksum are published together. This command executes the setup script only when every download and the checksum verification succeed:
+
+<!-- BEGIN verify-source-pages -->
+```sh
+(
+  download_dir=$(mktemp -d) &&
+  cd "$download_dir" &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    https://get-ros2.com/setup-source.sh -o setup-source.sh &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    https://get-ros2.com/setup-source.sh.sha256 -o setup-source.sh.sha256 &&
+  sha256sum --check --strict setup-source.sh.sha256 &&
+  sh ./setup-source.sh
+)
+```
+<!-- END verify-source-pages -->
+
+#### Specific release
+
+Replace `vX.Y.Z` with a release tag whose Assets include the source setup script. Older releases may provide only the binary installer.
+
+<!-- BEGIN verify-source-release -->
+```sh
+(
+  release_tag='vX.Y.Z'
+  release_url="https://github.com/MrBearing/get-ros2/releases/download/$release_tag"
+  download_dir=$(mktemp -d) &&
+  cd "$download_dir" &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    "$release_url/setup-source.sh" -o setup-source.sh &&
+  curl -fsSL --proto '=https' --proto-redir '=https' \
+    "$release_url/setup-source.sh.sha256" -o setup-source.sh.sha256 &&
+  sha256sum --check --strict setup-source.sh.sha256 &&
+  sh ./setup-source.sh
+)
+```
+<!-- END verify-source-release -->
+
+Success prints `setup-source.sh: OK`. A failed check stops setup; obtain a matching pair from the same release before retrying. The website can serve an older release than GitHub's latest release. A checksum is not a digital signature and cannot independently authenticate the publisher if both files are replaced.
+
+### Build after setup
+
+Follow the distribution-specific commands printed by the script in a **fresh shell without an existing ROS installation sourced**, including automatic sourcing in `.bashrc`. Use a new workspace as your normal user. Setup does not change your login locale, so activate the generated UTF-8 locale in every build shell:
+
+```sh
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+```
+
+The printed steps obtain the official source manifest, import repositories, resolve dependencies with rosdep, and build with colcon. Keep Ubuntu packages up to date and allow sufficient disk space and memory. For limited-memory machines, use `MAKEFLAGS=-j2 CMAKE_BUILD_PARALLEL_LEVEL=2 colcon build --symlink-install --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release` for the build step.
+
+See the official source-build instructions for [Humble](https://github.com/ros2/ros2_documentation/blob/humble/source/Installation/Alternatives/Ubuntu-Development-Setup.rst), [Jazzy](https://github.com/ros2/ros2_documentation/blob/jazzy/source/Installation/Alternatives/Ubuntu-Development-Setup.rst), and [Lyrical](https://github.com/ros2/ros2_documentation/blob/lyrical/source/Get-Started/Installation/Alternatives/Ubuntu-Development-Setup.rst). After building, source your workspace's `install/local_setup.sh` in each terminal and run the printed talker/listener commands to check communication.
+
+Upstream manifests track changing branches. Save exact revisions with `vcs export --exact src > ros2-exact.repos`; pinning the setup script alone does not pin ROS sources or APT packages.
+
+### Repeat runs and source setup errors
+
+Existing development packages, matching enabled ROS repository configuration, and rosdep sources are reused. Repository configuration for an older Ubuntu release, or a missing/disabled source file, is refreshed. Setup does not edit shell startup files or workspace contents. It does not repair a failed checkout or build.
+
+The rosdep cache is updated as the development user, including when setup is invoked through sudo. Direct root execution prepares root's cache; other developers must run `rosdep update --rosdistro DISTRO` themselves. For cache permission errors, check ownership of `~/.ros/rosdep` and run rosdep as your normal user.
+
+The [error categories and exit codes](#errors-and-logs) also apply to source setup. Additional errors are `E_USER` (exit 4) for invalid user/home configuration, `E_ROSDEP` (exit 1) for rosdep failures, and `E_TOOLS` (exit 1) for tool verification failures. Known network, APT, permissions, and disk errors take precedence. Setup retains a private log at `/tmp/get-ros2-source.XXXXXXXX/install.log`; already installed files remain installed after failure. Subsequent build failures have their own colcon logs in the workspace.
+
 
 ## Errors and logs
 

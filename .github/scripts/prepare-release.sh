@@ -10,7 +10,7 @@ if [[ -f "$source_directory/index.html" ]]; then
     cp "$source_directory/index.html" "$output_directory/"
 fi
 if [[ -f "$source_directory/setup-source.sh" ]]; then
-    cp "$source_directory/setup-source.sh" "$source_directory/SOURCE_BUILD.md" "$output_directory/"
+    cp "$source_directory/setup-source.sh" "$output_directory/"
 fi
 touch "$output_directory/.nojekyll"
 cd "$output_directory"

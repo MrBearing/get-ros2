@@ -202,9 +202,9 @@ touch "$TEST_SERVER/install.sh.sha256" "$TEST_SERVER/install.sh.sha256.starter"
 run_case checksum_starter_retry 0 2 '' 1
 clear_assets
 # New releases publish both standalone scripts; old releases above still publish two assets.
-cp "$directory/../setup-source.sh" "$directory/../SOURCE_BUILD.md" "$sandbox/source files/"
+cp "$directory/../setup-source.sh" "$sandbox/source files/"
 bash "$scripts/prepare-release.sh" "$sandbox/source files" "$sandbox/source site" > "$sandbox/source-preparation.log"
-for name in setup-source.sh setup-source.sh.sha256 SOURCE_BUILD.md; do
+for name in setup-source.sh setup-source.sh.sha256; do
     cp "$sandbox/source site/$name" "$sandbox/site files/"
 done
 cmp "$directory/../setup-source.sh" "$sandbox/site files/setup-source.sh"
