@@ -149,11 +149,13 @@ Use [setup-source.sh](setup-source.sh) to prepare a source-build environment ins
 
 See the [source-build guide](SOURCE_BUILD.md) for supported environments, verification commands, options, and instructions. The source setup script displays the same UNOFFICIAL / WITHOUT WARRANTY notices and requires confirmation before changes.
 
-| Ubuntu | Published source-build setup |
-| --- | --- |
-| 22.04 | [![Published source Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml) |
-| 24.04 | [![Published source Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml) |
-| 26.04 | [![Published source Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml) |
+The workflows below build the C++ and Python demos and their required dependencies from source on amd64 and arm64, then verify talker/listener communication. Repository CI badges show the overall OS workflow result, including source builds and installer checks. Published source-build badges show results for the script downloaded from get-ros2.com. Click a badge to view runs and build logs.
+
+| Ubuntu / ROS 2 | Repository CI (includes source builds) | Published source builds |
+| --- | --- | --- |
+| 22.04 / Humble | [![Repository CI including source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml?query=branch%3Amain) |
+| 24.04 / Jazzy | [![Repository CI including source builds on Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-24-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-24-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml?query=branch%3Amain) |
+| 26.04 / Lyrical | [![Repository CI including source builds on Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml?query=branch%3Amain) |
 
 ## Errors and logs
 
