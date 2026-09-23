@@ -55,7 +55,7 @@ done
 metadata() {
     local name=$1 id=11 state=uploaded size
     size=$(wc -c < "$TEST_SERVER/$name")
-    [[ $name != install.sh.sha256 ]] || id=12
+    case "$name" in install.sh.sha256) id=12 ;; setup-source.sh) id=13 ;; setup-source.sh.sha256) id=14 ;; esac
     [[ $SCENARIO != invalid_metadata ]] || state=starter
     [[ ! -f $TEST_SERVER/$name.starter ]] || state=starter
     jq -n --arg name "$name" --arg state "$state" --argjson id "$id" --argjson size "$size" \
@@ -65,6 +65,8 @@ if [[ $method == DELETE ]]; then
     case "$endpoint" in
         "repos/$REPOSITORY/releases/assets/11") name=install.sh ;;
         "repos/$REPOSITORY/releases/assets/12") name=install.sh.sha256 ;;
+        "repos/$REPOSITORY/releases/assets/13") name=setup-source.sh ;;
+        "repos/$REPOSITORY/releases/assets/14") name=setup-source.sh.sha256 ;;
         *) exit 99 ;;
     esac
     [[ -f $TEST_SERVER/$name.starter && ! -s $TEST_SERVER/$name ]] || exit 99
@@ -76,7 +78,7 @@ fi
 if [[ $method == POST ]]; then
     [[ $content_type == octet-stream && -f $input ]] || exit 99
     name=${endpoint##*name=}
-    [[ $name == install.sh || $name == install.sh.sha256 ]] || exit 99
+    case "$name" in install.sh|install.sh.sha256|setup-source.sh|setup-source.sh.sha256) ;; *) exit 99 ;; esac
     [[ $endpoint == "https://uploads.github.com/repos/$REPOSITORY/releases/101/assets?name=$name" ]] || exit 99
     printf '%s\n' "$name" >> "$TEST_UPLOADS"
     [[ $SCENARIO != upload_failure ]] || exit 1
@@ -115,14 +117,19 @@ case "$endpoint" in
         if [[ -f $TEST_SERVER/install.sh ]]; then first=$(metadata install.sh | jq '[.]'); fi
         if [[ -f $TEST_SERVER/install.sh.sha256 ]]; then second=$(metadata install.sh.sha256 | jq '[.]'); fi
         if [[ $SCENARIO == duplicate_asset ]]; then first=$(jq '. + .' <<< "$first"); fi
+        for name in setup-source.sh setup-source.sh.sha256; do
+            if [[ -f $TEST_SERVER/$name ]]; then
+                second=$(jq --argjson asset "$(metadata "$name")" '. + [$asset]' <<< "$second")
+            fi
+        done
         # Keep the checksum on a separate page to verify pagination.
         jq -n --argjson first "$first" --argjson second "$second" '[$first, $second]'
         ;;
-    "repos/$REPOSITORY/releases/assets/11"|"repos/$REPOSITORY/releases/assets/12")
+    "repos/$REPOSITORY/releases/assets/11"|"repos/$REPOSITORY/releases/assets/12"|"repos/$REPOSITORY/releases/assets/13"|"repos/$REPOSITORY/releases/assets/14")
         [[ $accept == octet-stream ]] || exit 99
         [[ $SCENARIO != download_api_failure ]] || exit 1
         name=install.sh
-        [[ $endpoint != */12 ]] || name=install.sh.sha256
+        case "$endpoint" in */12) name=install.sh.sha256 ;; */13) name=setup-source.sh ;; */14) name=setup-source.sh.sha256 ;; esac
         cat "$TEST_SERVER/$name"
         ;;
     *) printf 'Unexpected API request: %s\n' "$endpoint" >&2; exit 99 ;;
@@ -143,8 +150,10 @@ run_case() {
         exit 1
     fi
     if [[ $expected == 0 ]]; then
-        for name in install.sh install.sh.sha256; do cmp "$sandbox/site files/$name" "$TEST_SERVER/$name"; done
-        grep -Fq 'Verified both release assets' "$sandbox/stdout"
+        for name in install.sh install.sh.sha256 setup-source.sh setup-source.sh.sha256; do
+            if [[ -f $sandbox/site\ files/$name ]]; then cmp "$sandbox/site files/$name" "$TEST_SERVER/$name"; fi
+        done
+        grep -Fq 'Verified release assets' "$sandbox/stdout"
     else
         grep -Fq -- "$message" "$sandbox/stderr" || { cat "$sandbox/stderr" >&2; exit 1; }
     fi
@@ -192,6 +201,37 @@ clear_assets
 touch "$TEST_SERVER/install.sh.sha256" "$TEST_SERVER/install.sh.sha256.starter"
 run_case checksum_starter_retry 0 2 '' 1
 clear_assets
+# New releases publish both standalone scripts; old releases above still publish two assets.
+cp "$directory/../setup-source.sh" "$sandbox/source files/"
+bash "$scripts/prepare-release.sh" "$sandbox/source files" "$sandbox/source site" > "$sandbox/source-preparation.log"
+for name in setup-source.sh setup-source.sh.sha256; do
+    cp "$sandbox/source site/$name" "$sandbox/site files/"
+done
+cmp "$directory/../setup-source.sh" "$sandbox/site files/setup-source.sh"
+run_case both_scripts 0 4
+run_case both_scripts_retry 0 0
+run_case immutable_both_scripts 0 0
+printf 'changed\n' >> "$TEST_SERVER/setup-source.sh"
+run_case source_conflict 1 0 'setup-source.sh differs'
+clear_assets
+cp "$sandbox/site files/setup-source.sh.sha256" "$TEST_SERVER/setup-source.sh.sha256"
+printf 'changed\n' >> "$TEST_SERVER/setup-source.sh.sha256"
+run_case source_checksum_conflict 1 0 'setup-source.sh.sha256 differs'
+clear_assets
+touch "$TEST_SERVER/setup-source.sh" "$TEST_SERVER/setup-source.sh.starter"
+run_case source_starter_retry 0 4 '' 1
+clear_assets
+run_case second_upload_failure 1 2 'Unable to upload'
+run_case both_scripts_partial_retry 0 3
+rm -- "$sandbox/site files/setup-source.sh.sha256"
+run_case missing_source_checksum 1 0 'Missing or unreadable prepared checksum: setup-source.sh.sha256.'
+mkdir "$sandbox/site files/setup-source.sh.sha256"
+run_case non_file_source_checksum 1 0 'Missing or unreadable prepared checksum: setup-source.sh.sha256.'
+rmdir "$sandbox/site files/setup-source.sh.sha256"
+printf 'bad manifest\n' > "$sandbox/site files/setup-source.sh.sha256"
+run_case invalid_source_checksum 1 0 'local checksum must match setup-source.sh'
+clear_assets
+rm -- "$sandbox/site files/setup-source.sh" "$sandbox/site files/setup-source.sh.sha256"
 printf 'bad manifest\n' > "$sandbox/site files/install.sh.sha256"
 run_case invalid_local_checksum 1 0 'local checksum must match'
 printf 'Passed %s release asset publication cases and preparation checks\n' "$count"

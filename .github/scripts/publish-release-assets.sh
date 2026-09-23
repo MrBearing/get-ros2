@@ -5,10 +5,24 @@ fail() { printf 'Release asset publication failed: %s\n' "$*" >&2; exit 1; }
 [[ -n ${REPOSITORY:-} && -n ${RELEASE_TAG:-} && ${RELEASE_ID:-} =~ ^[1-9][0-9]*$ ]] ||
     fail 'REPOSITORY, RELEASE_TAG, and a numeric RELEASE_ID are required.'
 site_directory=$(realpath "${1:?Usage: publish-release-assets.sh SITE_DIRECTORY}")
-expected=$(cd "$site_directory" && sha256sum install.sh)
-[[ $(cat "$site_directory/install.sh.sha256") == "$expected" ]] ||
-    fail 'The local checksum must match install.sh and name only install.sh.'
-(cd "$site_directory" && sha256sum --check --strict install.sh.sha256)
+scripts=(install.sh)
+if [[ -e $site_directory/setup-source.sh || -e $site_directory/setup-source.sh.sha256 ]]; then
+    scripts+=(setup-source.sh)
+fi
+names=()
+checksums=()
+for script in "${scripts[@]}"; do
+    expected=$(cd "$site_directory" && sha256sum "$script") || fail "Missing prepared script: $script."
+    [[ -f $site_directory/$script.sha256 && -r $site_directory/$script.sha256 ]] ||
+        fail "Missing or unreadable prepared checksum: $script.sha256."
+    manifest=$(cat "$site_directory/$script.sha256") ||
+        fail "Unable to read prepared checksum: $script.sha256."
+    [[ $manifest == "$expected" ]] ||
+        fail "The local checksum must match $script and name only $script."
+    (cd "$site_directory" && sha256sum --check --strict "$script.sha256")
+    names+=("$script" "$script.sha256")
+    checksums+=("$expected")
+done
 
 # Use the verified release ID for every API operation, including uploads.
 release=$(gh api "repos/$REPOSITORY/releases/$RELEASE_ID") || fail 'Unable to read the verified release.'
@@ -36,10 +50,10 @@ verify_asset() {
         fail "$name differs from the prepared file. Existing assets will not be overwritten."
 }
 
-# Check both existing files before uploading anything, so a conflict fails early.
+# Check all existing files before uploading anything, so a conflict fails early.
 missing=()
 incomplete=()
-for name in install.sh install.sh.sha256; do
+for name in "${names[@]}"; do
     matches=$(jq -c --arg name "$name" '[.[] | select(.name == $name)]' <<< "$assets")
     case $(jq length <<< "$matches") in
         0) missing+=("$name") ;;
@@ -74,9 +88,13 @@ for name in "${missing[@]}"; do
     verify_asset "$name" "$metadata"
 done
 
-printf 'Verified both release assets against the files prepared for GitHub Pages.\n%s\n' "$expected"
+printf 'Verified release assets against the files prepared for GitHub Pages.\n'
+printf '%s\n' "${checksums[@]}"
 if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
     encoded_tag=$(jq -rn --arg tag "$RELEASE_TAG" '$tag | @uri')
-    printf '### Release assets\n\n[Download installer and checksum](https://github.com/%s/releases/tag/%s)\n\nSHA-256 for install.sh: %s\n' \
-        "$REPOSITORY" "$encoded_tag" "${expected%% *}" >> "$GITHUB_STEP_SUMMARY"
+    {
+        printf '### Release assets\n\n[Download scripts and checksums](https://github.com/%s/releases/tag/%s)\n\nSHA-256 checksums:\n\n```text\n' "$REPOSITORY" "$encoded_tag"
+        printf '%s\n' "${checksums[@]}"
+        printf '```\n'
+    } >> "$GITHUB_STEP_SUMMARY"
 fi
