@@ -10,6 +10,16 @@ on:
         required: true
         type: string
 
+      profile:
+        type: string
+        default: auto
+      package_workers:
+        type: string
+        default: ''
+      compiler_jobs:
+        type: string
+        default: ''
+
 permissions:
   contents: read
 
@@ -17,7 +27,7 @@ jobs:
   build:
     name: Source build (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 120
+    timeout-minutes: ${{ inputs.profile == 'benchmark' && 240 || 120 }}
     strategy:
       fail-fast: false
       matrix:
@@ -43,14 +53,14 @@ jobs:
             *) exit 1 ;;
           esac
           sh -n _ci/source-input/setup-source.sh
-      - name: Prepare and build ROS 2 from source in a clean Ubuntu container
+      - name: Prepare and build ROS 2 from source
         env:
           UBUNTU_VERSION: ${{ inputs.ubuntu }}
+          SOURCE_BUILD_PROFILE: ${{ inputs.profile }}
+          SOURCE_BUILD_WORKERS: ${{ inputs.package_workers }}
+          SOURCE_BUILD_JOBS: ${{ inputs.compiler_jobs }}
         run: |
-          docker run --name source-build --init \
-            -e SOURCE_BUILD_TEST_CONTAINER=1 -e DEBIAN_FRONTEND=noninteractive \
-            -v "$PWD:/workspace:ro" -w /workspace \
-            "ubuntu:$UBUNTU_VERSION" bash tests/source-build.sh /workspace/_ci/source-input/setup-source.sh
+          bash .github/scripts/run-source-build.sh /workspace/_ci/source-input/setup-source.sh
       - name: Collect source revisions and build logs
         if: always()
         env:
@@ -63,10 +73,28 @@ jobs:
             *) exit 1 ;;
           esac
           mkdir -p _ci/source-build
-          docker logs source-build > _ci/source-build/container.log 2>&1 || true
-          for item in exact.repos log talker.log listener.log; do
-            docker cp "source-build:/home/builder/ros2_$distro/$item" _ci/source-build/ || true
+          for container in source-build source-build-prepare source-build-baseline source-build-auto source-build-low-memory; do
+            if docker inspect "$container" >/dev/null 2>&1; then
+              target="_ci/source-build/$container"
+              mkdir -p "$target"
+              docker logs "$container" > "$target/container.log" 2>&1 || true
+              for item in exact.repos log talker.log listener.log build-metrics.txt build-memory-peak.txt; do
+                docker cp "$container:/home/builder/ros2_$distro/$item" "$target/" || true
+              done
+            fi
           done
+          {
+            echo '### Source-build measurements'
+            echo
+            for metrics in _ci/source-build/*/build-metrics.txt; do
+              if [[ -f $metrics ]]; then
+                echo "**$(basename "$(dirname "$metrics")")**"
+                echo '```text'
+                cat "$metrics"
+                echo '```'
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         if: always()
         with:

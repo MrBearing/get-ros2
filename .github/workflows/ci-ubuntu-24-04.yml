@@ -5,6 +5,20 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      source_profile:
+        description: Source-build concurrency profile
+        type: choice
+        options: [auto, low-memory, baseline, benchmark]
+        default: auto
+      source_package_workers:
+        description: Concurrent packages (auto profile only; empty selects automatically)
+        type: string
+        default: ''
+      source_compiler_jobs:
+        description: Compiler jobs per package (auto profile only; empty selects automatically)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -19,3 +33,6 @@ jobs:
     with:
       ubuntu: '24.04'
       source: repository
+      source_profile: ${{ inputs.source_profile || 'auto' }}
+      source_package_workers: ${{ inputs.source_package_workers || '' }}
+      source_compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
