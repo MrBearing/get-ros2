@@ -1,0 +1,19 @@
+name: Benchmark source-build parallelism
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04', '26.04']
+    uses: ./.github/workflows/check-source.yml
+    with:
+      ubuntu: ${{ matrix.ubuntu }}
+      source: repository
+      profile: benchmark
