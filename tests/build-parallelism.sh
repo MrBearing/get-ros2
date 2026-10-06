@@ -46,8 +46,9 @@ source_build_configure() {
         source_build_error 'Numeric overrides require SOURCE_BUILD_PROFILE=auto.'; return 2
     fi
     source_build_resources || return
-    # Reserve 1 GiB for the OS/tools; budget about 1.5 GiB per compiler job.
-    memory_jobs=$(((BUILD_MEMORY_BYTES - 1073741824) / 1610612736))
+    # Reserve 1 GiB for the OS/tools; allow 3 GiB per job for large Rust builds.
+    # This is a scheduling estimate, not a bound on any compiler's memory use.
+    memory_jobs=$(((BUILD_MEMORY_BYTES - 1073741824) / 3221225472))
     ((memory_jobs > 0)) || memory_jobs=1
     budget=$BUILD_CPUS
     ((memory_jobs >= budget)) || budget=$memory_jobs
