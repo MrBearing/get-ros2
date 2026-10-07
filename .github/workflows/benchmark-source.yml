@@ -17,3 +17,4 @@ jobs:
       ubuntu: ${{ matrix.ubuntu }}
       source: repository
       profile: benchmark
+      cache_mode: 'off'

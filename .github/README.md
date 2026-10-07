@@ -73,3 +73,24 @@ Peak sampled total container memory, in MiB (including page cache):
 For Lyrical, the maximum recorded per-process RSS was approximately 4 GiB, and sampled total container memory reached approximately 8–9 GiB. The low-memory profile reduced concurrency and increased runtime, but did not substantially reduce peak memory for this workload. It is not a substitute for sufficient RAM for individual compiler processes.
 
 Evidence: [Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/runs/37423453468), [Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/runs/37423457184), [Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/runs/37423461152). Artifacts include exact source revisions, build logs, communication logs, and raw measurements.
+
+## Compiler and download caches
+
+Normal source CI uses `source_cache=on`; select `off` in Run workflow to bypass restoration, storage, and compiler wrappers. `source_cache=benchmark` compares no-cache, cold cache, and warm cache builds from independent copies of one prepared environment, with the same ROS revisions and APT packages. This is separate from the concurrency benchmark, which always remains cache-free. The reusable workflow takes the option as `cache_mode`.
+
+Every run still executes setup, rosdep, and a source checkout in a new Ubuntu container. Compiler caches are mounted only for compilation. Build/install directories and entire installed environments are never restored. Links are executed again, and the source-built C++/Python communication check runs for every profile.
+
+- C/C++: Ubuntu's ccache with compiler-content checks and no relaxed input checks; storage is limited to 512 MiB. PATH wrappers cover nested builds that use the detected compiler or search PATH. Hard-coded compiler paths can bypass caching.
+- Rust: verified sccache 0.18.0 binaries from its official release, `RUSTC_WRAPPER`, and incremental compilation disabled; storage is limited to 768 MiB. Rust caches use a source-manifest namespace in addition to toolchain isolation, so changed source revisions cannot restore old Rust results. Obsolete Rust namespaces are discarded.
+- Cargo downloads: compressed registry archives and Git databases are reused; each download category is pruned to 256 MiB after compilation. Cargo configuration, credentials, executable tools, extracted registry source trees, and target directories are not uploaded.
+- APT downloads are not cached in this implementation. APT index refresh, signed package resolution, and installation continue on every run. This avoids introducing root-owned package-cache mounts into the setup test; download caching can be revisited if measurements show it dominates remaining time.
+
+Compiler restore prefixes separate Ubuntu release, native CPU architecture, compiler/tool binary contents, all installed APT package versions, and the release build configuration. A source revision changes the save key while allowing compatible C++ objects to be restored and revalidated by ccache. Source/header/compiler-option changes are checked by the compiler cache, and system/toolchain package changes select a new prefix. Rust does not use the C++ cross-revision fallback. New run/attempt keys permit cache updates despite GitHub's immutable cache entries.
+
+PRs restore compatible caches but never upload them. Only main pushes and authorized manual workflow runs save caches, within GitHub's branch/repository cache isolation. No `pull_request_target` trigger is used. Scheduled published-source checks always use `off`, providing a regular fresh build. Restoration/storage errors are non-fatal; missing caches cause real compilation. Compiler errors still fail the check.
+
+The workflow measures restore/save wall time separately from compilation and retains raw ccache counters and sccache JSON statistics in build artifacts. A cache benchmark can save its warmed branch cache for a subsequent normal manual run, which measures actual GitHub restoration overhead. Benchmark mode does not restore prior caches, keeping the cold measurement cold.
+
+Not every compilation can be cached. sccache does not cache Rust crates that invoke the linker, including binaries, dynamic libraries, and procedural macro crates. Filesystem-reading procedural macros have known invalidation limitations. The fresh scheduled runs provide independent checks; cache hits do not substitute for compilation/runtime validation or guarantee identical behavior for every possible upstream build script.
+
+References: [ccache manual](https://ccache.dev/manual/latest.html), [sccache Rust limitations](https://github.com/mozilla/sccache/blob/v0.18.0/docs/Rust.md), [GitHub cache isolation](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).

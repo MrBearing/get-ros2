@@ -20,6 +20,10 @@ on:
         type: string
         default: ''
 
+      source_cache:
+        type: string
+        default: 'on'
+
 permissions:
   contents: read
 
@@ -64,6 +68,7 @@ jobs:
               bash tests/verify-download.sh
               bash tests/parallelism.sh
               bash tests/source-build-driver.sh
+              bash tests/cache-keys.sh
               bash tests/source-setup.sh
               bash tests/fetch.sh setup-source.sh setup-source.sh
               bash tests/run.sh /tmp/installer-under-test.sh
@@ -111,3 +116,9 @@ jobs:
       profile: ${{ inputs.source_profile }}
       package_workers: ${{ inputs.source_package_workers }}
       compiler_jobs: ${{ inputs.source_compiler_jobs }}
+      cache_mode: ${{ inputs.source_cache }}
+
+  cache-tools:
+    uses: ./.github/workflows/check-cache-tools.yml
+    with:
+      ubuntu: ${{ inputs.ubuntu }}

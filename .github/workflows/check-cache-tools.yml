@@ -1,0 +1,38 @@
+name: Check compiler cache correctness
+
+on:
+  workflow_call:
+    inputs:
+      ubuntu:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test real cache hits and invalidation
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+        run: |
+          case "$UBUNTU_VERSION" in 22.04|24.04|26.04) ;; *) exit 2 ;; esac
+          docker run --rm --init -v "$PWD:/workspace:ro" -w /workspace \
+            -e DEBIAN_FRONTEND=noninteractive "ubuntu:$UBUNTU_VERSION" bash -euo pipefail -c '
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates curl gcc g++ cmake rustc cargo
+              source tests/build-cache.sh
+              source_cache_install
+              bash tests/compiler-cache.sh
+              bash tests/cache-keys.sh
+            '
