@@ -39,6 +39,22 @@ pass 'changed header invalidates cached compilation'
 before=$(misses); compile -DEXTRA=3
 [[ $(misses) -gt $before && $(./fixture) == 5 ]]
 pass 'changed compiler flags invalidate cached compilation'
+mkdir "$sandbox/compiler"
+cat > "$sandbox/compiler/c++" <<'COMPILER'
+#!/bin/sh
+exec /usr/bin/c++ "$@"
+COMPILER
+chmod +x "$sandbox/compiler/c++"
+ccache "$sandbox/compiler/c++" -c main.cpp -o compiler.o
+before=$(hits)
+ccache "$sandbox/compiler/c++" -c main.cpp -o compiler.o
+[[ $(hits) -gt $before ]]
+pass 'identical compiler contents permit reuse'
+printf '\n# New compiler build identity\n' >> "$sandbox/compiler/c++"
+before=$(misses)
+ccache "$sandbox/compiler/c++" -c main.cpp -o compiler.o
+[[ $(misses) -gt $before ]]
+pass 'changed compiler contents at the same path invalidate cached objects'
 printf '\ninvalid C++ source\n' >> main.cpp
 if compile > "$sandbox/failed.log" 2>&1; then echo 'A cached build hid a compiler error.' >&2; exit 1; fi
 pass 'real compiler errors remain failures'
