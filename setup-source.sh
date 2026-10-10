@@ -33,7 +33,7 @@ ASSUME_YES=0
 TARGET_USER=
 TARGET_HOME=
 SWITCH_USER=0
-DISTRO=
+DISTRO=rolling
 USE_SUDO=0
 WORK_DIR=
 LOG_FILE=
@@ -60,12 +60,14 @@ Usage:
   curl -fsSL https://get-ros2.com/setup-source.sh | sh -s -- [options]
 
 Options:
-  --distro NAME       humble / jazzy / lyrical (default: the LTS matching your OS)
+  --distro NAME       rolling / humble / jazzy / lyrical (default: rolling)
   --dry-run           Show planned commands without sudo, network access, or file changes
   -y, --yes           Accept the UNOFFICIAL / WITHOUT WARRANTY notice and skip confirmation
   -h, --help          Show this help
 
-Supported: Ubuntu 22.04 → Humble / 24.04 → Jazzy / 26.04 → Lyrical
+Supported: Ubuntu 26.04 → Rolling (default) or Lyrical
+           Ubuntu 22.04 → Humble / 24.04 → Jazzy (explicit --distro required)
+Rolling's target platforms and dependencies may change over time.
 USAGE
 }
 
@@ -84,8 +86,8 @@ parse_args() {
         esac
     done
     case "$DISTRO" in
-        ''|humble|jazzy|lyrical) ;;
-        *) die E_ARGUMENT "--distro must be humble, jazzy, or lyrical." 2 ;;
+        rolling|humble|jazzy|lyrical) ;;
+        *) die E_ARGUMENT "--distro must be rolling, humble, jazzy, or lyrical." 2 ;;
     esac
 }
 
@@ -121,9 +123,13 @@ detect_platform() {
     RELEASE_CODENAME=${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}
     [ -z "$RELEASE_CODENAME" ] || [ "$RELEASE_CODENAME" = "$CODENAME" ] ||
         die E_OS "The OS version and codename do not match: $VERSION_ID / $RELEASE_CODENAME. Check the state of your OS upgrade." 3
-    if [ -z "$DISTRO" ]; then DISTRO=$EXPECTED_DISTRO; fi
-    [ "$DISTRO" = "$EXPECTED_DISTRO" ] ||
-        die E_DISTRO "Use $EXPECTED_DISTRO on Ubuntu $VERSION_ID. This setup script supports only the matching Ubuntu LTS/source distribution pair." 3
+    if [ "$DISTRO" = rolling ]; then
+        [ "$VERSION_ID" = 26.04 ] ||
+            die E_DISTRO "Rolling source setup requires Ubuntu 26.04. On Ubuntu $VERSION_ID, explicitly select --distro $EXPECTED_DISTRO, or upgrade to Ubuntu 26.04 for Rolling." 3
+    else
+        [ "$DISTRO" = "$EXPECTED_DISTRO" ] ||
+            die E_DISTRO "Use --distro $EXPECTED_DISTRO on Ubuntu $VERSION_ID. Rolling is supported only on Ubuntu 26.04." 3
+    fi
     command -v apt-get >/dev/null 2>&1 || die E_PACKAGE_MANAGER 'apt-get was not found. Run this installer in a standard Ubuntu environment.' 3
     command -v dpkg >/dev/null 2>&1 || die E_PACKAGE_MANAGER 'dpkg was not found. Run this installer in a standard Ubuntu environment.' 3
     ARCH=$(dpkg --print-architecture) || die E_DETECTION 'Unable to detect the package architecture.' 3
@@ -132,6 +138,9 @@ detect_platform() {
         *) die E_ARCH "Unsupported CPU architecture: $ARCH. A 64-bit Ubuntu installation (amd64 or arm64) is required." 3 ;;
     esac
     say "Detected: Ubuntu $VERSION_ID ($CODENAME) / $ARCH → ROS 2 $DISTRO source-build environment"
+    if [ "$DISTRO" = rolling ]; then
+        say 'Rolling tracks ongoing development; its target platforms and dependencies may change.'
+    fi
     if [ -n "${ROS_DISTRO:-}${AMENT_PREFIX_PATH:-}${CMAKE_PREFIX_PATH:-}" ]; then
         say 'Note: an existing build environment is loaded. Use a fresh shell without any ROS installation sourced when building ROS 2.'
     fi
@@ -391,7 +400,7 @@ prepare_source_environment() {
                 python3-flake8-builtins python3-flake8-class-newline python3-flake8-comprehensions \
                 python3-flake8-deprecated python3-flake8-import-order python3-flake8-quotes \
                 python3-pytest-repeat python3-pytest-rerunfailures ;;
-        jazzy|lyrical)
+        jazzy|lyrical|rolling)
             set -- "$@" python3-mypy python3-pytest python3-pytest-mock python3-pytest-repeat \
                 python3-pytest-rerunfailures python3-pytest-runner python3-pytest-timeout
             if [ "$DISTRO" = jazzy ]; then
@@ -414,7 +423,7 @@ next_steps() {
     case "$DISTRO" in
         humble) SKIP_KEYS='fastcdr rti-connext-dds-6.0.1 urdfdom_headers' ;;
         jazzy) SKIP_KEYS='fastcdr rti-connext-dds-6.0.1 urdfdom_headers' ;;
-        lyrical) SKIP_KEYS='fastcdr rti-connext-dds-7.7.0 urdfdom_headers' ;;
+        lyrical|rolling) SKIP_KEYS='fastcdr rti-connext-dds-7.7.0 urdfdom_headers' ;;
     esac
     say 'Next steps (not executed): use a fresh shell without any ROS installation sourced.'
     say 'Run as your normal user in a NEW workspace. Keep Ubuntu packages up to date.'

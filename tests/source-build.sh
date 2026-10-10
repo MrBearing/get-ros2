@@ -12,6 +12,22 @@ source_cache_validate
 phase=${SOURCE_BUILD_PHASE:-all}
 case "$phase" in all|prepare|build) ;; *) source_build_error 'SOURCE_BUILD_PHASE must be all, prepare, or build.'; exit 2 ;; esac
 setup_script=${1:-$directory/../setup-source.sh}
+# CI selects stable distributions explicitly; an unset value exercises Rolling's default.
+# shellcheck disable=SC1091
+source /etc/os-release
+case "$VERSION_ID:${SOURCE_BUILD_DISTRO:-}" in
+    22.04:|22.04:humble) distro=humble ;;
+    24.04:|24.04:jazzy) distro=jazzy ;;
+    26.04:) distro=rolling ;;
+    26.04:lyrical|26.04:rolling) distro=$SOURCE_BUILD_DISTRO ;;
+    *) echo 'Unsupported Ubuntu/source distribution combination.' >&2; exit 2 ;;
+esac
+setup_args=(--yes --distro "$distro")
+[[ -n ${SOURCE_BUILD_DISTRO:-} ]] || [[ $distro != rolling ]] || setup_args=(--yes)
+case "$distro" in
+    humble|jazzy) skip='fastcdr rti-connext-dds-6.0.1 urdfdom_headers' ;;
+    lyrical|rolling) skip='fastcdr rti-connext-dds-7.7.0 urdfdom_headers' ;;
+esac
 if [[ $phase != build ]]; then
     cp "$setup_script" /tmp/source-setup-under-test.sh
     setup_script=/tmp/source-setup-under-test.sh
@@ -21,19 +37,11 @@ if [[ $phase != build ]]; then
     printf 'builder ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/source-build-test
     chmod 440 /etc/sudoers.d/source-build-test
     # Exercise both user entry points; the second run must reuse system configuration.
-    runuser -u builder -- sh "$setup_script" --yes
-    runuser -u builder -- sudo sh "$setup_script" --yes
+    runuser -u builder -- sh "$setup_script" "${setup_args[@]}"
+    runuser -u builder -- sudo sh "$setup_script" "${setup_args[@]}"
     if [[ ${SOURCE_BUILD_CACHE:-off} == on ]]; then source_cache_install; fi
     [[ $(stat -c %U /home/builder/.ros/rosdep/sources.cache) == builder ]]
 fi
-# shellcheck disable=SC1091
-source /etc/os-release
-case "$VERSION_ID" in
-    22.04) distro=humble; skip='fastcdr rti-connext-dds-6.0.1 urdfdom_headers' ;;
-    24.04) distro=jazzy; skip='fastcdr rti-connext-dds-6.0.1 urdfdom_headers' ;;
-    26.04) distro=lyrical; skip='fastcdr rti-connext-dds-7.7.0 urdfdom_headers' ;;
-    *) exit 1 ;;
-esac
 if [[ ${SOURCE_BUILD_CACHE:-off} == on && -d /cache ]]; then
     chown -R -h builder:builder /cache
 fi
@@ -42,13 +50,19 @@ set -euo pipefail
 cd "$HOME"
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 [[ $(locale charmap) == UTF-8 ]]
+packages=(demo_nodes_cpp demo_nodes_py ros2run)
 if [[ $BUILD_PHASE != build ]]; then
     mkdir -p "ros2_$DISTRO/src"
     cd "ros2_$DISTRO"
     curl -fL --proto '=https' --proto-redir '=https' "https://raw.githubusercontent.com/ros2/ros2/$DISTRO/ros2.repos" -o ros2.repos
     vcs import --recursive --input ros2.repos src
     vcs export --exact src > exact.repos
-    rosdep install --from-paths src --ignore-src --rosdistro "$DISTRO" -y --skip-keys "$SKIP_KEYS"
+    # Resolve only the packages exercised below and their recursive dependencies.
+    # Do not require binary dependencies of unrelated GUI/examples in the manifest.
+    colcon list --packages-up-to "${packages[@]}" --paths-only > build-package-paths.txt
+    mapfile -t dependency_paths < build-package-paths.txt
+    ((${#dependency_paths[@]} > 0)) || { echo 'No source packages selected for the communication check.' >&2; exit 2; }
+    rosdep install --from-paths "${dependency_paths[@]}" --ignore-src --rosdistro "$DISTRO" -y --skip-keys "$SKIP_KEYS"
     # shellcheck source=tests/build-cache.sh
     source "$CACHE_HELPER"
     if [[ ${SOURCE_BUILD_CACHE:-off} == on ]]; then source_cache_context; fi
@@ -87,7 +101,7 @@ trap stop_monitor EXIT
 build_status=0
 /usr/bin/time -o build-metrics.txt -f 'elapsed_seconds=%e\nmax_process_rss_kib=%M' \
     colcon build --symlink-install "${BUILD_COLCON_ARGS[@]}" \
-    --packages-up-to demo_nodes_cpp demo_nodes_py ros2run \
+    --packages-up-to "${packages[@]}" \
     --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF || build_status=$?
 stop_monitor
 trap - EXIT

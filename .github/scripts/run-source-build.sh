@@ -2,6 +2,13 @@
 # Prepare a fresh environment, then build with optional compiler/download caches.
 set -euo pipefail
 case ${UBUNTU_VERSION:-} in 22.04|24.04|26.04) ;; *) echo 'UBUNTU_VERSION must be 22.04, 24.04, or 26.04.' >&2; exit 2 ;; esac
+case "$UBUNTU_VERSION:${SOURCE_BUILD_DISTRO:-}" in
+    22.04:|22.04:humble) distro=humble ;;
+    24.04:|24.04:jazzy) distro=jazzy ;;
+    26.04:|26.04:lyrical) distro=lyrical ;;
+    26.04:rolling) distro=rolling ;;
+    *) echo 'Unsupported Ubuntu/source distribution combination.' >&2; exit 2 ;;
+esac
 profile=${SOURCE_BUILD_PROFILE:-auto}
 cache=${SOURCE_BUILD_CACHE_MODE:-off}
 action=${SOURCE_BUILD_ACTION:-all}
@@ -17,13 +24,12 @@ fi
 installer=${1:?Usage: run-source-build.sh SETUP_SCRIPT}
 common=(--init -e SOURCE_BUILD_TEST_CONTAINER=1 -e DEBIAN_FRONTEND=noninteractive
     -v "$PWD:/workspace:ro" -w /workspace)
-settings=(-e SOURCE_BUILD_WORKERS="${SOURCE_BUILD_WORKERS:-}" -e SOURCE_BUILD_JOBS="${SOURCE_BUILD_JOBS:-}")
+settings=(-e SOURCE_BUILD_WORKERS="${SOURCE_BUILD_WORKERS:-}" -e SOURCE_BUILD_JOBS="${SOURCE_BUILD_JOBS:-}" -e SOURCE_BUILD_DISTRO="$distro")
 collect() {
-    local container=$1 target="_ci/source-build/$1" distro item
-    case "$UBUNTU_VERSION" in 22.04) distro=humble ;; 24.04) distro=jazzy ;; 26.04) distro=lyrical ;; esac
+    local container=$1 target="_ci/source-build/$1" item
     mkdir -p "$target"
     docker logs "$container" > "$target/container.log" 2>&1 || true
-    for item in exact.repos log talker.log listener.log build-metrics.txt build-memory-peak.txt cache-context.txt cache-toolchain.txt ccache-stats.txt sccache-stats.json sccache-stop.txt; do
+    for item in exact.repos build-package-paths.txt log talker.log listener.log build-metrics.txt build-memory-peak.txt cache-context.txt cache-toolchain.txt ccache-stats.txt sccache-stats.json sccache-stop.txt; do
         docker cp "$container:/home/builder/ros2_$distro/$item" "$target/" || true
     done
 }
