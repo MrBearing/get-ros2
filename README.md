@@ -159,6 +159,8 @@ Setup installs development tools through APT, configures the ROS repository, gen
 
 The workflows below build the C++ and Python demos and their required dependencies from source on amd64 and arm64, then verify talker/listener communication. Repository CI badges show the overall OS workflow result, including source builds and installer checks. Published source-build badges show results for the script downloaded from get-ros2.com. Click a badge to view runs and build logs.
 
+See [source-build CI controls and measurements](.github/SOURCE_BUILD_CI.md) for concurrency settings, compiler caches, and benchmark results.
+
 | Ubuntu / ROS 2 | Repository CI (includes source builds) | Published source builds |
 | --- | --- | --- |
 | 22.04 / Humble | [![Repository CI including source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml?query=branch%3Amain) |
