@@ -75,5 +75,5 @@ for mode in "${modes[@]}"; do
     collect "$container"
     printf 'container_seconds=%s\n' "$((SECONDS - build_started))" > "_ci/source-build/$container/phase-metrics.txt"
     docker rm "$container" >/dev/null
- done
+done
 exit "$status"
