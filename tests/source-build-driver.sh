@@ -33,7 +33,7 @@ run() {
     [[ $status == "$expected" ]] || { cat "$sandbox/stderr" >&2; exit 1; }
 }
 pass() { count=$((count+1)); printf 'ok %s - %s\n' "$count" "$*"; }
-export UBUNTU_VERSION=24.04 SOURCE_BUILD_PROFILE=auto SOURCE_BUILD_WORKERS=2 SOURCE_BUILD_JOBS=2
+export UBUNTU_VERSION=24.04 SOURCE_BUILD_PROFILE=auto SOURCE_BUILD_WORKERS=2 SOURCE_BUILD_JOBS=2 SOURCE_BUILD_CACHE_MODE=off SOURCE_BUILD_ACTION=all
 run 0
 grep -Fq 'SOURCE_BUILD_WORKERS=2' "$TEST_DOCKER_CALLS"
 grep -Fq 'SOURCE_BUILD_JOBS=2' "$TEST_DOCKER_CALLS"
@@ -60,6 +60,31 @@ run 1
 [[ $(grep -c '^run ' "$TEST_DOCKER_CALLS") == 1 ]]
 pass 'preparation failure stops benchmark'
 unset TEST_DOCKER_FAIL
+SOURCE_BUILD_PROFILE=auto SOURCE_BUILD_CACHE_MODE=on
+run 0
+[[ $(grep -c '^run ' "$TEST_DOCKER_CALLS") == 2 ]]
+grep -Fq '/workspace:ro' "$TEST_DOCKER_CALLS"
+grep -Fq '/cache' "$TEST_DOCKER_CALLS"
+pass 'cached builds still prepare a fresh environment before mounting cache data'
+SOURCE_BUILD_ACTION=prepare
+run 0
+[[ $(grep -c '^run ' "$TEST_DOCKER_CALLS") == 1 ]]
+if grep -q '^image rm' "$TEST_DOCKER_CALLS"; then exit 1; fi
+pass 'separate preparation leaves its snapshot for cache restoration'
+SOURCE_BUILD_ACTION=build
+run 0
+[[ $(grep -c '^run ' "$TEST_DOCKER_CALLS") == 1 ]]
+grep -Fq 'SOURCE_BUILD_PHASE=build' "$TEST_DOCKER_CALLS"
+pass 'build stage uses the prepared snapshot'
+SOURCE_BUILD_ACTION=all SOURCE_BUILD_CACHE_MODE=benchmark
+run 0
+for mode in no-cache cold warm; do
+    grep -Fq "source-build-$mode" "$TEST_DOCKER_CALLS"
+    [[ -f $sandbox/work/_ci/source-build/source-build-$mode/build-metrics.txt ]]
+done
+[[ $(grep -c 'source-cache:/cache' "$TEST_DOCKER_CALLS") == 2 ]]
+pass 'cache comparison gives cold and warm a shared cache but leaves no-cache unmounted'
+SOURCE_BUILD_CACHE_MODE=off SOURCE_BUILD_PROFILE=benchmark
 SOURCE_BUILD_WORKERS=2
 run 2
 [[ ! -s $TEST_DOCKER_CALLS ]]

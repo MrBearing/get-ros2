@@ -20,6 +20,10 @@ on:
         type: string
         default: ''
 
+      cache_mode:
+        type: string
+        default: 'on'
+
 permissions:
   contents: read
 
@@ -27,7 +31,7 @@ jobs:
   build:
     name: Source build (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: ${{ inputs.profile == 'benchmark' && 240 || 120 }}
+    timeout-minutes: ${{ (inputs.profile == 'benchmark' || inputs.cache_mode == 'benchmark') && 240 || 120 }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,14 +57,59 @@ jobs:
             *) exit 1 ;;
           esac
           sh -n _ci/source-input/setup-source.sh
-      - name: Prepare and build ROS 2 from source
+      - name: Prepare a clean source-build environment
         env:
           UBUNTU_VERSION: ${{ inputs.ubuntu }}
           SOURCE_BUILD_PROFILE: ${{ inputs.profile }}
+          SOURCE_BUILD_CACHE_MODE: ${{ inputs.cache_mode }}
+          SOURCE_BUILD_ACTION: prepare
           SOURCE_BUILD_WORKERS: ${{ inputs.package_workers }}
           SOURCE_BUILD_JOBS: ${{ inputs.compiler_jobs }}
         run: |
           bash .github/scripts/run-source-build.sh /workspace/_ci/source-input/setup-source.sh
+      - name: Select compatible cache keys
+        id: cache-key
+        if: inputs.cache_mode != 'off' && inputs.profile != 'benchmark'
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: bash .github/scripts/source-cache-key.sh _ci/source-build/source-build-prepare/cache-context.txt
+      - name: Start cache restore timer
+        if: inputs.cache_mode == 'on' && inputs.profile != 'benchmark'
+        run: date +%s > _ci/cache-restore-start
+      - name: Restore compatible compiler results
+        id: compiler-cache
+        if: inputs.cache_mode == 'on' && inputs.profile != 'benchmark'
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            _ci/source-cache/ccache
+            _ci/source-cache/rust
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: ${{ steps.cache-key.outputs.prefix }}
+      - name: Restore Cargo downloads
+        if: inputs.cache_mode == 'on' && inputs.profile != 'benchmark'
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            _ci/source-cache/downloads/registry/cache
+            _ci/source-cache/downloads/git/db
+          key: ${{ steps.cache-key.outputs.download_key }}
+          restore-keys: ${{ steps.cache-key.outputs.download_prefix }}
+      - name: Record cache restore time
+        if: inputs.cache_mode == 'on' && inputs.profile != 'benchmark'
+        run: echo "restore_seconds=$(( $(date +%s) - $(cat _ci/cache-restore-start) ))" > _ci/cache-transfer.txt
+      - name: Build and exercise ROS 2
+        env:
+          UBUNTU_VERSION: ${{ inputs.ubuntu }}
+          SOURCE_BUILD_PROFILE: ${{ inputs.profile }}
+          SOURCE_BUILD_CACHE_MODE: ${{ inputs.cache_mode }}
+          SOURCE_BUILD_ACTION: build
+          SOURCE_BUILD_WORKERS: ${{ inputs.package_workers }}
+          SOURCE_BUILD_JOBS: ${{ inputs.compiler_jobs }}
+        run: bash .github/scripts/run-source-build.sh /workspace/_ci/source-input/setup-source.sh
       - name: Collect source revisions and build logs
         if: always()
         env:
@@ -73,12 +122,12 @@ jobs:
             *) exit 1 ;;
           esac
           mkdir -p _ci/source-build
-          for container in source-build source-build-prepare source-build-baseline source-build-auto source-build-low-memory; do
+          for container in source-build source-build-prepare source-build-baseline source-build-auto source-build-low-memory source-build-normal source-build-no-cache source-build-cold source-build-warm; do
             if docker inspect "$container" >/dev/null 2>&1; then
               target="_ci/source-build/$container"
               mkdir -p "$target"
               docker logs "$container" > "$target/container.log" 2>&1 || true
-              for item in exact.repos log talker.log listener.log build-metrics.txt build-memory-peak.txt; do
+              for item in exact.repos log talker.log listener.log build-metrics.txt build-memory-peak.txt cache-context.txt cache-toolchain.txt ccache-stats.txt sccache-stats.json sccache-stop.txt; do
                 docker cp "$container:/home/builder/ros2_$distro/$item" "$target/" || true
               done
             fi
@@ -95,6 +144,43 @@ jobs:
               fi
             done
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Normalize cache ownership
+        if: always()
+        run: |
+          if [[ -d _ci/source-cache ]]; then
+            sudo chown -R -h "$(id -u):$(id -g)" _ci/source-cache
+          fi
+      - name: Start cache save timer
+        if: success() && inputs.cache_mode != 'off' && inputs.profile != 'benchmark' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+        run: date +%s > _ci/cache-save-start
+      - name: Save compiler results from trusted runs
+        if: success() && inputs.cache_mode != 'off' && inputs.profile != 'benchmark' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            _ci/source-cache/ccache
+            _ci/source-cache/rust
+          key: ${{ steps.cache-key.outputs.key }}
+      - name: Save Cargo downloads from trusted runs
+        if: success() && inputs.cache_mode != 'off' && inputs.profile != 'benchmark' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            _ci/source-cache/downloads/registry/cache
+            _ci/source-cache/downloads/git/db
+          key: ${{ steps.cache-key.outputs.download_key }}
+      - name: Record cache transfer measurements
+        if: always()
+        run: |
+          if [[ -f _ci/cache-save-start ]]; then
+            echo "save_seconds=$(( $(date +%s) - $(cat _ci/cache-save-start) ))" >> _ci/cache-transfer.txt
+          fi
+          if [[ -f _ci/cache-transfer.txt ]]; then
+            cp _ci/cache-transfer.txt _ci/source-build/
+            cat _ci/cache-transfer.txt >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -5,6 +5,11 @@ on:
     - cron: '46 3 * * 1'
   workflow_dispatch:
     inputs:
+      source_cache:
+        description: Compiler cache mode (benchmark compares no-cache, cold, warm)
+        type: choice
+        options: ['on', 'off', benchmark]
+        default: 'on'
       source_profile:
         description: Source-build concurrency profile
         type: choice
@@ -35,3 +40,4 @@ jobs:
       profile: ${{ inputs.source_profile || 'auto' }}
       package_workers: ${{ inputs.source_package_workers || '' }}
       compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
+      cache_mode: ${{ github.event_name == 'schedule' && 'off' || inputs.source_cache || 'on' }}

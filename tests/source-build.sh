@@ -6,6 +6,9 @@ directory=$(cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=tests/build-parallelism.sh
 source "$directory/build-parallelism.sh"
 source_build_configure
+# shellcheck source=tests/build-cache.sh
+source "$directory/build-cache.sh"
+source_cache_validate
 phase=${SOURCE_BUILD_PHASE:-all}
 case "$phase" in all|prepare|build) ;; *) source_build_error 'SOURCE_BUILD_PHASE must be all, prepare, or build.'; exit 2 ;; esac
 setup_script=${1:-$directory/../setup-source.sh}
@@ -20,6 +23,7 @@ if [[ $phase != build ]]; then
     # Exercise both user entry points; the second run must reuse system configuration.
     runuser -u builder -- sh "$setup_script" --yes
     runuser -u builder -- sudo sh "$setup_script" --yes
+    if [[ ${SOURCE_BUILD_CACHE:-off} == on ]]; then source_cache_install; fi
     [[ $(stat -c %U /home/builder/.ros/rosdep/sources.cache) == builder ]]
 fi
 # shellcheck disable=SC1091
@@ -30,7 +34,10 @@ case "$VERSION_ID" in
     26.04) distro=lyrical; skip='fastcdr rti-connext-dds-7.7.0 urdfdom_headers' ;;
     *) exit 1 ;;
 esac
-runuser -u builder -- env DISTRO="$distro" SKIP_KEYS="$skip" BUILD_HELPER="$directory/build-parallelism.sh" BUILD_PHASE="$phase" bash <<'BUILD'
+if [[ ${SOURCE_BUILD_CACHE:-off} == on && -d /cache ]]; then
+    chown -R -h builder:builder /cache
+fi
+runuser -u builder -- env DISTRO="$distro" SKIP_KEYS="$skip" BUILD_HELPER="$directory/build-parallelism.sh" CACHE_HELPER="$directory/build-cache.sh" BUILD_PHASE="$phase" bash <<'BUILD'
 set -euo pipefail
 cd "$HOME"
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
@@ -42,6 +49,9 @@ if [[ $BUILD_PHASE != build ]]; then
     vcs import --recursive --input ros2.repos src
     vcs export --exact src > exact.repos
     rosdep install --from-paths src --ignore-src --rosdistro "$DISTRO" -y --skip-keys "$SKIP_KEYS"
+    # shellcheck source=tests/build-cache.sh
+    source "$CACHE_HELPER"
+    if [[ ${SOURCE_BUILD_CACHE:-off} == on ]]; then source_cache_context; fi
     touch .source-build-prepared
     if [[ $BUILD_PHASE == prepare ]]; then exit 0; fi
 else
@@ -52,6 +62,9 @@ fi
 # shellcheck source=tests/build-parallelism.sh
 source "$BUILD_HELPER"
 source_build_configure
+# shellcheck source=tests/build-cache.sh
+source "$CACHE_HELPER"
+source_cache_enable
 # Sample total container memory, including page cache; time's RSS is per process.
 memory_file=/sys/fs/cgroup/memory.current
 [[ -r $memory_file ]] || memory_file=/sys/fs/cgroup/memory/memory.usage_in_bytes
@@ -82,9 +95,11 @@ trap - EXIT
     printf 'profile=%s\npackage_workers=%s\ncompiler_jobs=%s\ncargo_jobs=%s\n' \
         "$BUILD_PROFILE" "$BUILD_WORKERS" "$BUILD_JOBS" "${CARGO_BUILD_JOBS:-default}"
     printf 'effective_cpus=%s\neffective_memory_bytes=%s\n' "$BUILD_CPUS" "$BUILD_MEMORY_BYTES"
+    printf 'cache_mode=%s\n' "${SOURCE_BUILD_CACHE:-off}"
     printf 'sampled_peak_container_bytes=%s\nbuild_exit_code=%s\n' "$(cat build-memory-peak.txt 2>/dev/null || echo unavailable)" "$build_status"
 } >> build-metrics.txt
 cat build-metrics.txt
+source_cache_stats
 ((build_status == 0)) || exit "$build_status"
 set +u
 source install/local_setup.bash

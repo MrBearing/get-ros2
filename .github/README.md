@@ -73,3 +73,58 @@ Peak sampled total container memory, in MiB (including page cache):
 For Lyrical, the maximum recorded per-process RSS was approximately 4 GiB, and sampled total container memory reached approximately 8–9 GiB. The low-memory profile reduced concurrency and increased runtime, but did not substantially reduce peak memory for this workload. It is not a substitute for sufficient RAM for individual compiler processes.
 
 Evidence: [Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/runs/37423453468), [Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/runs/37423457184), [Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/runs/37423461152). Artifacts include exact source revisions, build logs, communication logs, and raw measurements.
+
+## Compiler and download caches
+
+Normal source CI uses `source_cache=on`; select `off` in Run workflow to bypass restoration, storage, and compiler wrappers. `source_cache=benchmark` compares no-cache, cold cache, and warm cache builds from independent copies of one prepared environment, with the same ROS revisions and APT packages. This is separate from the concurrency benchmark, which always remains cache-free. The reusable workflow takes the option as `cache_mode`.
+
+Every run still executes setup, rosdep, and a source checkout in a new Ubuntu container. Compiler caches are mounted only for compilation. Build/install directories and entire installed environments are never restored. Links are executed again, and the source-built C++/Python communication check runs for every profile.
+
+- C/C++: Ubuntu's ccache with compiler-content checks and no relaxed input checks; storage is limited to 512 MiB. PATH wrappers cover nested builds that use the detected compiler or search PATH. Hard-coded compiler paths can bypass caching.
+- Rust: verified sccache 0.18.0 binaries from its official release, `RUSTC_WRAPPER`, and incremental compilation disabled; storage is limited to 768 MiB. Rust caches use a source-manifest namespace in addition to toolchain isolation, so changed source revisions cannot restore old Rust results. Obsolete Rust namespaces are discarded.
+- Cargo downloads: compressed registry archives and Git databases are reused; each download category is pruned to 256 MiB after compilation. Cargo configuration, credentials, executable tools, extracted registry source trees, and target directories are not uploaded.
+- APT downloads are not cached in this implementation. APT index refresh, signed package resolution, and installation continue on every run. This avoids introducing root-owned package-cache mounts into the setup test; download caching can be revisited if measurements show it dominates remaining time.
+
+Compiler restore prefixes separate Ubuntu release, native CPU architecture, compiler/tool binary contents, all installed APT package versions, and the release build configuration. A source revision changes the save key while allowing compatible C++ objects to be restored and revalidated by ccache. Source/header/compiler-option changes are checked by the compiler cache, and system/toolchain package changes select a new prefix. Rust does not use the C++ cross-revision fallback. New run/attempt keys permit cache updates despite GitHub's immutable cache entries.
+
+PRs restore compatible caches but never upload them. Only main pushes and authorized manual workflow runs save caches, within GitHub's branch/repository cache isolation. No `pull_request_target` trigger is used. Scheduled published-source checks always use `off`, providing a regular fresh build. Restoration/storage errors are non-fatal; missing caches cause real compilation. Compiler errors still fail the check.
+
+The workflow measures restore/save wall time separately from compilation and retains raw ccache counters and sccache JSON statistics in build artifacts. A cache benchmark can save its warmed branch cache for a subsequent normal manual run, which measures actual GitHub restoration overhead. Benchmark mode does not restore prior caches, keeping the cold measurement cold.
+
+Not every compilation can be cached. sccache does not cache Rust crates that invoke the linker, including binaries, dynamic libraries, and procedural macro crates. Filesystem-reading procedural macros have known invalidation limitations. The fresh scheduled runs provide independent checks; cache hits do not substitute for compilation/runtime validation or guarantee identical behavior for every possible upstream build script.
+
+References: [ccache manual](https://ccache.dev/manual/latest.html), [sccache Rust limitations](https://github.com/mozilla/sccache/blob/v0.18.0/docs/Rust.md), [GitHub cache isolation](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
+
+### Recorded cache comparison: 2026-10-07
+
+At commit `769c030`, all six OS/architecture combinations passed no-cache, cold-cache, and warm-cache builds plus talker/listener communication (18 checks). The three source manifests within each job were byte-identical. All used the auto concurrency profile. Cold-cache builds started empty; warm builds used new containers with the cache directories from the cold build, rather than reusing build outputs.
+
+Compilation times exclude setup/checkout and transfer. Vendor downloads performed during compilation are included. Each value is one measurement; runner/network variability affects comparisons.
+
+| Ubuntu / architecture | No cache | Cold cache | Warm cache | Warm time reduction | C/C++ hit rate | Rust hit rate |
+| --- | --- | --- | --- | --- | --- | --- |
+| 22.04 / amd64 | 13m 38s | 15m 10s | 4m 29s | 67.1% | 99.6% | N/A |
+| 22.04 / arm64 | 9m 41s | 10m 51s | 2m 56s | 69.8% | 99.6% | N/A |
+| 24.04 / amd64 | 17m 21s | 19m 12s | 5m 15s | 69.8% | 93.7% | N/A |
+| 24.04 / arm64 | 13m 03s | 14m 17s | 3m 46s | 71.2% | 93.2% | N/A |
+| 26.04 / amd64 | 38m 18s | 41m 23s | 14m 17s | 62.7% | 99.7% | 99.5% |
+| 26.04 / arm64 | 25m 48s | 28m 13s | 10m 51s | 57.9% | 99.7% | 99.5% |
+
+Hit rates use hits / (hits + misses) for cacheable calls. Unsupported calls, linking, and intentional CMake compiler probes are outside this denominator. Humble/Jazzy did not compile Rust in these selected dependency closures. Cold caches added approximately 8–12% compilation overhead in this measurement; warmed caches reduced compilation time by approximately 58–71%. These are not whole-workflow speedups because fresh setup remains mandatory.
+
+A separate manual run then recreated setup and sources and restored compatible caches through GitHub. Successful final results:
+
+| Ubuntu / architecture | Compilation after GitHub restore | Restore wall time | Save wall time | C/C++ hit rate | Rust hit rate |
+| --- | --- | --- | --- | --- | --- |
+| 22.04 / amd64 | 2m 54s | 2s | 9s | 99.6% | N/A |
+| 22.04 / arm64 | 2m 59s | 1s | 2s | 99.6% | N/A |
+| 24.04 / amd64 | 5m 22s | 1s | 2s | 93.8% | N/A |
+| 24.04 / arm64 | 3m 41s | 1s | 2s | 94.2% | N/A |
+| 26.04 / amd64 | 14m 03s | 12s | 9s | 99.7% | 99.5% |
+| 26.04 / arm64 | 10m 16s | 7s | 8s | 99.7% | 99.5% |
+
+The first Ubuntu 22.04 restore attempt had a changed source revision and a different resolved APT package set (presence of `libtinfo-dev`). Its compiler namespace differed, so it rebuilt instead of restoring incompatible results. A subsequent run matched a stored package/toolchain namespace and achieved the hit rates above. All package versions are intentionally included in the prefix: even benign dependency-resolution differences can cause a cold build. Compatible C++ entries still reuse across source revisions; Rust source namespaces remain separate.
+
+The reported restore timer covers both compiler and Cargo restoration, including key lookup. The save timer covers both cache saves. Storage/retrieval failures are non-fatal and can produce a cold build. Cache limits and GitHub eviction can also lower hit rates. APT dependency resolution was not skipped in any restored run.
+
+Evidence: comparison runs [22.04](https://github.com/MrBearing/get-ros2/actions/runs/37606934874), [24.04](https://github.com/MrBearing/get-ros2/actions/runs/37606938859), [26.04](https://github.com/MrBearing/get-ros2/actions/runs/37606943391); GitHub restore runs [22.04](https://github.com/MrBearing/get-ros2/actions/runs/37615018814), [24.04](https://github.com/MrBearing/get-ros2/actions/runs/37612646658), [26.04](https://github.com/MrBearing/get-ros2/actions/runs/37618985677). The first 22.04 invalidation run is [37612041654](https://github.com/MrBearing/get-ros2/actions/runs/37612041654). Updated compiler-content invalidation tests at `d9675d7` passed on all six native cache-tool jobs in the restore runs.

@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      source_cache:
+        description: Compiler cache mode (benchmark compares no-cache, cold, warm)
+        type: choice
+        options: ['on', 'off', benchmark]
+        default: 'on'
       source_profile:
         description: Source-build concurrency profile
         type: choice
@@ -36,3 +41,4 @@ jobs:
       source_profile: ${{ inputs.source_profile || 'auto' }}
       source_package_workers: ${{ inputs.source_package_workers || '' }}
       source_compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
+      source_cache: ${{ inputs.source_cache || 'on' }}
