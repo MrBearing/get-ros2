@@ -29,7 +29,7 @@ collect() {
     local container=$1 target="_ci/source-build/$1" item
     mkdir -p "$target"
     docker logs "$container" > "$target/container.log" 2>&1 || true
-    for item in exact.repos log talker.log listener.log build-metrics.txt build-memory-peak.txt cache-context.txt cache-toolchain.txt ccache-stats.txt sccache-stats.json sccache-stop.txt; do
+    for item in exact.repos build-package-paths.txt log talker.log listener.log build-metrics.txt build-memory-peak.txt cache-context.txt cache-toolchain.txt ccache-stats.txt sccache-stats.json sccache-stop.txt; do
         docker cp "$container:/home/builder/ros2_$distro/$item" "$target/" || true
     done
 }

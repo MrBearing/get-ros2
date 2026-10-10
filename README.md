@@ -245,6 +245,8 @@ See the official source-build instructions for [Rolling](https://github.com/ros2
 
 Upstream manifests track changing branches. Save exact revisions with `vcs export --exact src > ros2-exact.repos`; pinning the setup script alone does not pin ROS sources or APT packages.
 
+Rolling dependencies may be temporarily unavailable while upstream packages change. A successful environment setup does not guarantee that every package in the full workspace can currently build. Review rosdep and colcon errors before retrying; the communication CI checks cover the demos and their dependency closure.
+
 ### Repeat runs and source setup errors
 
 Existing development packages, matching enabled ROS repository configuration, and rosdep sources are reused. Repository configuration for an older Ubuntu release, or a missing/disabled source file, is refreshed. Setup does not edit shell startup files or workspace contents. It does not repair a failed checkout or build.

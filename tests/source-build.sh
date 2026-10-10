@@ -50,13 +50,19 @@ set -euo pipefail
 cd "$HOME"
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 [[ $(locale charmap) == UTF-8 ]]
+packages=(demo_nodes_cpp demo_nodes_py ros2run)
 if [[ $BUILD_PHASE != build ]]; then
     mkdir -p "ros2_$DISTRO/src"
     cd "ros2_$DISTRO"
     curl -fL --proto '=https' --proto-redir '=https' "https://raw.githubusercontent.com/ros2/ros2/$DISTRO/ros2.repos" -o ros2.repos
     vcs import --recursive --input ros2.repos src
     vcs export --exact src > exact.repos
-    rosdep install --from-paths src --ignore-src --rosdistro "$DISTRO" -y --skip-keys "$SKIP_KEYS"
+    # Resolve only the packages exercised below and their recursive dependencies.
+    # Do not require binary dependencies of unrelated GUI/examples in the manifest.
+    colcon list --packages-up-to "${packages[@]}" --paths-only > build-package-paths.txt
+    mapfile -t dependency_paths < build-package-paths.txt
+    ((${#dependency_paths[@]} > 0)) || { echo 'No source packages selected for the communication check.' >&2; exit 2; }
+    rosdep install --from-paths "${dependency_paths[@]}" --ignore-src --rosdistro "$DISTRO" -y --skip-keys "$SKIP_KEYS"
     # shellcheck source=tests/build-cache.sh
     source "$CACHE_HELPER"
     if [[ ${SOURCE_BUILD_CACHE:-off} == on ]]; then source_cache_context; fi
@@ -95,7 +101,7 @@ trap stop_monitor EXIT
 build_status=0
 /usr/bin/time -o build-metrics.txt -f 'elapsed_seconds=%e\nmax_process_rss_kib=%M' \
     colcon build --symlink-install "${BUILD_COLCON_ARGS[@]}" \
-    --packages-up-to demo_nodes_cpp demo_nodes_py ros2run \
+    --packages-up-to "${packages[@]}" \
     --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF || build_status=$?
 stop_monitor
 trap - EXIT
