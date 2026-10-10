@@ -65,14 +65,14 @@ KERNEL=Linux
 ARCH=amd64
 USER_ID=1000
 EXISTING_APT=0
-APT_VERSION=1.3.0~noble
+APT_VERSION=1.3.0~resolute
 FAIL_TOOL=''
 FAIL_MATCH=''
 FAIL_TEXT='Connection timed out'
 CONFIG
     printf '%s\n' "$@" >> "$root/config"
-    printf 'ID=ubuntu\nVERSION_ID=24.04\nVERSION_CODENAME=noble\n' > "$root/os-release"
-    printf 'Suites: noble\n' > "$root/ros2.sources"
+    printf 'ID=ubuntu\nVERSION_ID=26.04\nVERSION_CODENAME=resolute\n' > "$root/os-release"
+    printf 'Suites: resolute\n' > "$root/ros2.sources"
     find "$root" -maxdepth 1 -name 'run.*' -type d -exec rm -r -- {} +
     rm -f "$root/rosdep-default.list" "$HOME/cache-updated"
     : > "$root/calls"
@@ -89,12 +89,12 @@ absent() { if grep -Fq -- "$2" "$root/$1"; then cat "$root/$1" >&2; exit 1; fi; 
 count=0
 pass() { count=$((count+1)); printf 'ok %s - %s\n' "$count" "$*"; }
 for shell in /bin/dash /bin/bash; do
-    for spec in '22.04 jammy humble' '24.04 noble jazzy' '26.04 resolute lyrical'; do
+    for spec in '22.04 jammy humble' '24.04 noble jazzy' '26.04 resolute lyrical' '26.04 resolute rolling'; do
         read -r version codename distro <<< "$spec"
         for arch in amd64 arm64; do
             reset "ARCH=$arch"
             printf 'ID=ubuntu\nVERSION_ID=%s\nVERSION_CODENAME=%s\n' "$version" "$codename" > "$root/os-release"
-            run 0 "$shell" "$root/setup.sh" --yes
+            run 0 "$shell" "$root/setup.sh" --yes --distro "$distro"
             contains calls 'ros-dev-tools'
             contains calls "rosdep update --rosdistro $distro"
             contains stdout "ROS 2 $distro source-build environment setup completed."
@@ -106,8 +106,35 @@ for shell in /bin/dash /bin/bash; do
             [[ -f $HOME/cache-updated ]]
             if [[ $distro == humble ]]; then contains calls python3-flake8-quotes; fi
             if [[ $distro == jazzy ]]; then contains calls python3-flake8-deprecated; fi
-            if [[ $distro == lyrical ]]; then absent calls python3-flake8; fi
+            if [[ $distro == lyrical || $distro == rolling ]]; then absent calls python3-flake8; fi
+            contains stdout "https://raw.githubusercontent.com/ros2/ros2/$distro/ros2.repos"
+            contains stdout "rosdep install --from-paths src --ignore-src --rosdistro $distro"
             pass "$shell / $version / $arch"
+        done
+    done
+    for arch in amd64 arm64; do
+        reset "ARCH=$arch"
+        run 0 env ROS_DISTRO=jazzy "$shell" "$root/setup.sh" --yes
+        contains calls 'rosdep update --rosdistro rolling'
+        contains stdout 'ros2_rolling'
+        contains stdout 'Rolling tracks ongoing development'
+        contains stdout 'UNOFFICIAL'
+        contains stdout 'WITHOUT WARRANTY'
+        pass "Rolling default ignores inherited ROS_DISTRO: $shell / $arch"
+    done
+    for spec in '22.04 jammy humble' '24.04 noble jazzy'; do
+        read -r version codename distro <<< "$spec"
+        for selection in default explicit; do
+            reset
+            printf 'ID=ubuntu\nVERSION_ID=%s\nVERSION_CODENAME=%s\n' "$version" "$codename" > "$root/os-release"
+            arguments=(--yes)
+            [[ $selection != explicit ]] || arguments+=(--distro rolling)
+            run 3 "$shell" "$root/setup.sh" "${arguments[@]}"
+            contains stderr "explicitly select --distro $distro"
+            absent calls apt-get
+            absent calls sudo
+            absent calls rosdep
+            pass "Rolling rejects unsupported Ubuntu before changes: $shell / $version / $selection"
         done
     done
     for answer in y yes no empty invalid eof; do
@@ -154,11 +181,11 @@ for scenario in old_package missing_source disabled_source old_suite; do
         old_suite) printf 'Suites: jammy\n' > "$root/ros2.sources" ;;
     esac
     run 0 sh "$root/setup.sh" --yes
-    contains calls 'ros2-apt-source_1.3.0.noble_all.deb'
+    contains calls 'ros2-apt-source_1.3.0.resolute_all.deb'
     contains calls 'dpkg --install'
     pass "refresh repository after Ubuntu upgrade: $scenario"
 done
-for args in '--distro' '--distro rolling' '--variant desktop'; do
+for args in '--distro' '--distro invalid' '--variant desktop'; do
     reset
     read -ra arguments <<< "$args"
     run 2 sh "$root/setup.sh" "${arguments[@]}"
@@ -166,6 +193,16 @@ for args in '--distro' '--distro rolling' '--variant desktop'; do
     [[ ! -s $root/calls ]]
     pass "arguments: $args"
 done
+reset
+run 2 sh "$root/setup.sh" --distro ''
+contains stderr 'ERROR E_ARGUMENT:'
+[[ ! -s $root/calls ]]
+pass 'empty explicit distribution rejected'
+run 0 sh "$root/setup.sh" --help
+contains stdout 'default: rolling'
+contains stdout 'explicit --distro required'
+[[ ! -s $root/calls ]]
+pass 'help explains default and explicit stable selection'
 reset
 run 3 sh "$root/setup.sh" --distro humble --yes
 contains stderr 'ERROR E_DISTRO:'

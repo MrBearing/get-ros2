@@ -147,13 +147,30 @@ For bash, use `source /opt/ros/jazzy/setup.bash`. For zsh, use `source /opt/ros/
 
 Use [setup-source.sh](setup-source.sh) to prepare a source-build environment instead of installing binary ROS 2 packages. It installs development tools and prepares rosdep, then prints the remaining checkout, dependency-resolution, and build commands. It does not build ROS 2 automatically.
 
-The source setup script supports the same [Ubuntu/ROS 2 pairs and architectures](#supported-environments) listed above. Run it as your normal development user with a writable home directory and sudo access:
+The source setup script defaults to **Rolling on Ubuntu 26.04**, on amd64 and arm64. Run it as your normal development user with a writable home directory and sudo access:
 
 ```sh
 curl -fsSL https://get-ros2.com/setup-source.sh | sh
 ```
 
-**This is an UNOFFICIAL setup script, provided WITHOUT WARRANTY OF ANY KIND.** It asks for confirmation before modifying the system. The supported options are `--distro humble|jazzy|lyrical`, `--dry-run`, `--yes` / `-y`, and `--help` / `-h`. Without a controlling terminal, explicit acknowledgement with `--yes` is required. A dry run makes no changes.
+**This is an UNOFFICIAL setup script, provided WITHOUT WARRANTY OF ANY KIND.** It asks for confirmation before modifying the system. The supported options are `--distro rolling|humble|jazzy|lyrical`, `--dry-run`, `--yes` / `-y`, and `--help` / `-h`. Without a controlling terminal, explicit acknowledgement with `--yes` is required. A dry run makes no changes.
+
+Stable distributions require an explicit `--distro` selection. These source-build combinations are supported on amd64 and arm64:
+
+| Ubuntu | Source distribution | Selection |
+| --- | --- | --- |
+| 26.04 | Rolling | Default, or `--distro rolling` |
+| 26.04 | Lyrical | `--distro lyrical` |
+| 24.04 | Jazzy | `--distro jazzy` |
+| 22.04 | Humble | `--distro humble` |
+
+For example, on Ubuntu 24.04:
+
+```sh
+curl -fsSL https://get-ros2.com/setup-source.sh | sh -s -- --distro jazzy
+```
+
+Without an explicit selection, Ubuntu 22.04 and 24.04 stop before making changes and show the required option. Rolling follows ongoing development, so its target platforms and dependencies may change. This project initially supports Rolling only on Ubuntu 26.04. Existing `ROS_DISTRO` environment values do not select the source distribution. Binary installation through `install.sh` continues to select the matching stable LTS distribution automatically.
 
 Setup installs development tools through APT, configures the ROS repository, generates the UTF-8 locale, and initializes/updates rosdep. Source checkout, workspace dependencies, and compilation remain separate steps. `install.sh --with-dev-tools` installs binary ROS 2 with development tools; use `setup-source.sh` when building ROS 2 itself.
 
@@ -166,6 +183,7 @@ See [source-build CI controls and measurements](.github/SOURCE_BUILD_CI.md) for 
 | 22.04 / Humble | [![Repository CI including source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-22-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 22.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-22-04.yml?query=branch%3Amain) |
 | 24.04 / Jazzy | [![Repository CI including source builds on Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-24-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-24-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 24.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-24-04.yml?query=branch%3Amain) |
 | 26.04 / Lyrical | [![Repository CI including source builds on Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml?query=branch%3Amain) | [![Published source builds on Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-ubuntu-26-04.yml?query=branch%3Amain) |
+| 26.04 / Rolling | [![Repository CI including Rolling source builds on Ubuntu 26.04](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml/badge.svg?branch=main&event=push)](https://github.com/MrBearing/get-ros2/actions/workflows/ci-ubuntu-26-04.yml?query=branch%3Amain) | [![Published Rolling source builds](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-rolling.yml/badge.svg?branch=main)](https://github.com/MrBearing/get-ros2/actions/workflows/published-source-rolling.yml?query=branch%3Amain) |
 
 ### Verify the source setup script
 
@@ -211,6 +229,8 @@ Replace `vX.Y.Z` with a release tag whose Assets include the source setup script
 
 Success prints `setup-source.sh: OK`. A failed check stops setup; obtain a matching pair from the same release before retrying. The website can serve an older release than GitHub's latest release. A checksum is not a digital signature and cannot independently authenticate the publisher if both files are replaced.
 
+The verified commands above use the script's default distribution. For stable source setup, pass the matching option when executing the verified file, for example `sh ./setup-source.sh --distro jazzy` on Ubuntu 24.04. Older published releases may still select a stable distribution automatically or reject Rolling; check the downloaded script's `--help` output.
+
 ### Build after setup
 
 Follow the distribution-specific commands printed by the script in a **fresh shell without an existing ROS installation sourced**, including automatic sourcing in `.bashrc`. Use a new workspace as your normal user. Setup does not change your login locale, so activate the generated UTF-8 locale in every build shell:
@@ -221,7 +241,7 @@ export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 The printed steps obtain the official source manifest, import repositories, resolve dependencies with rosdep, and build with colcon. Keep Ubuntu packages up to date and allow sufficient disk space and memory. For limited-memory machines, use `MAKEFLAGS=-j2 CMAKE_BUILD_PARALLEL_LEVEL=2 colcon build --symlink-install --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release` for the build step.
 
-See the official source-build instructions for [Humble](https://github.com/ros2/ros2_documentation/blob/humble/source/Installation/Alternatives/Ubuntu-Development-Setup.rst), [Jazzy](https://github.com/ros2/ros2_documentation/blob/jazzy/source/Installation/Alternatives/Ubuntu-Development-Setup.rst), and [Lyrical](https://github.com/ros2/ros2_documentation/blob/lyrical/source/Get-Started/Installation/Alternatives/Ubuntu-Development-Setup.rst). After building, source your workspace's `install/local_setup.sh` in each terminal and run the printed talker/listener commands to check communication.
+See the official source-build instructions for [Rolling](https://github.com/ros2/ros2_documentation/blob/rolling/source/Get-Started/Installation/Alternatives/Ubuntu-Development-Setup.rst), [Humble](https://github.com/ros2/ros2_documentation/blob/humble/source/Installation/Alternatives/Ubuntu-Development-Setup.rst), [Jazzy](https://github.com/ros2/ros2_documentation/blob/jazzy/source/Installation/Alternatives/Ubuntu-Development-Setup.rst), and [Lyrical](https://github.com/ros2/ros2_documentation/blob/lyrical/source/Get-Started/Installation/Alternatives/Ubuntu-Development-Setup.rst). After building, source your workspace's `install/local_setup.sh` in each terminal and run the printed talker/listener commands to check communication.
 
 Upstream manifests track changing branches. Save exact revisions with `vcs export --exact src > ros2-exact.repos`; pinning the setup script alone does not pin ROS sources or APT packages.
 

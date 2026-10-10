@@ -1,9 +1,8 @@
-name: CI Ubuntu 26.04
+name: Published source Rolling Ubuntu 26.04
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  schedule:
+    - cron: '17 4 * * 1'
   workflow_dispatch:
     inputs:
       source_cache:
@@ -14,7 +13,7 @@ on:
       source_profile:
         description: Source-build concurrency profile
         type: choice
-        options: [auto, low-memory, baseline, benchmark]
+        options: [auto, low-memory, baseline]
         default: auto
       source_package_workers:
         description: Concurrent packages (auto profile only; empty selects automatically)
@@ -34,22 +33,12 @@ concurrency:
 
 jobs:
   check:
-    uses: ./.github/workflows/check-ubuntu.yml
-    with:
-      ubuntu: '26.04'
-      source: repository
-      source_profile: ${{ inputs.source_profile || 'auto' }}
-      source_package_workers: ${{ inputs.source_package_workers || '' }}
-      source_compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
-      source_cache: ${{ inputs.source_cache || 'on' }}
-
-  rolling:
     uses: ./.github/workflows/check-source.yml
     with:
       ubuntu: '26.04'
-      source: repository
+      source: published
       distro: rolling
       profile: ${{ inputs.source_profile || 'auto' }}
       package_workers: ${{ inputs.source_package_workers || '' }}
       compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
-      cache_mode: ${{ inputs.source_cache || 'on' }}
+      cache_mode: ${{ github.event_name == 'schedule' && 'off' || inputs.source_cache || 'on' }}

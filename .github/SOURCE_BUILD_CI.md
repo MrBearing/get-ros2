@@ -2,6 +2,8 @@
 
 The source-build checks compile the C++/Python demos, CLI, and their dependency closure on Ubuntu 22.04, 24.04, and 26.04 using native amd64/arm64 runners. Every normal run starts with a clean Ubuntu container and runs source environment setup. These controls configure the CI build, not `setup-source.sh` itself.
 
+CI explicitly selects Humble on 22.04, Jazzy on 24.04, and Lyrical on 26.04. Ubuntu 26.04 repository CI also builds Rolling on both architectures. `published-source-rolling.yml` checks the verified published script separately, with cache-free scheduled builds. It can fail until a release with Rolling support is deployed. The reusable `check-source.yml` accepts a `distro` input; empty keeps the OS-matching stable CI selection. Source-build artifacts include the selected distribution in their names to separate stable and Rolling results.
+
 ## Concurrency
 
 The per-OS repository and published-source workflows accept these **Run workflow** inputs:
