@@ -109,7 +109,7 @@ for shell in /bin/dash /bin/bash; do
             if [[ $distro == lyrical || $distro == rolling ]]; then absent calls python3-flake8; fi
             contains stdout "https://raw.githubusercontent.com/ros2/ros2/$distro/ros2.repos"
             contains stdout "rosdep install --from-paths src --ignore-src --rosdistro $distro"
-            pass "$shell / $version / $arch"
+            pass "$shell / $version / $arch / $distro"
         done
     done
     for arch in amd64 arm64; do
