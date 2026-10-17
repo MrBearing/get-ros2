@@ -1,0 +1,44 @@
+name: Published source Rolling Ubuntu 26.04
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      source_cache:
+        description: Compiler cache mode (benchmark compares no-cache, cold, warm)
+        type: choice
+        options: ['on', 'off', benchmark]
+        default: 'on'
+      source_profile:
+        description: Source-build concurrency profile
+        type: choice
+        options: [auto, low-memory, baseline]
+        default: auto
+      source_package_workers:
+        description: Concurrent packages (auto profile only; empty selects automatically)
+        type: string
+        default: ''
+      source_compiler_jobs:
+        description: Compiler jobs per package (auto profile only; empty selects automatically)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: ./.github/workflows/check-source.yml
+    with:
+      ubuntu: '26.04'
+      source: published
+      distro: rolling
+      profile: ${{ inputs.source_profile || 'auto' }}
+      package_workers: ${{ inputs.source_package_workers || '' }}
+      compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
+      cache_mode: ${{ github.event_name == 'schedule' && 'off' || inputs.source_cache || 'on' }}

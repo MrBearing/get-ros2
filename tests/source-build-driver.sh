@@ -33,10 +33,11 @@ run() {
     [[ $status == "$expected" ]] || { cat "$sandbox/stderr" >&2; exit 1; }
 }
 pass() { count=$((count+1)); printf 'ok %s - %s\n' "$count" "$*"; }
-export UBUNTU_VERSION=24.04 SOURCE_BUILD_PROFILE=auto SOURCE_BUILD_WORKERS=2 SOURCE_BUILD_JOBS=2 SOURCE_BUILD_CACHE_MODE=off SOURCE_BUILD_ACTION=all
+export UBUNTU_VERSION=24.04 SOURCE_BUILD_DISTRO='' SOURCE_BUILD_PROFILE=auto SOURCE_BUILD_WORKERS=2 SOURCE_BUILD_JOBS=2 SOURCE_BUILD_CACHE_MODE=off SOURCE_BUILD_ACTION=all
 run 0
 grep -Fq 'SOURCE_BUILD_WORKERS=2' "$TEST_DOCKER_CALLS"
 grep -Fq 'SOURCE_BUILD_JOBS=2' "$TEST_DOCKER_CALLS"
+grep -Fq 'SOURCE_BUILD_DISTRO=jazzy' "$TEST_DOCKER_CALLS"
 [[ $(grep -c '^run ' "$TEST_DOCKER_CALLS") == 1 ]]
 pass 'normal run forwards settings without snapshotting'
 SOURCE_BUILD_PROFILE=benchmark SOURCE_BUILD_WORKERS='' SOURCE_BUILD_JOBS=''
@@ -84,6 +85,25 @@ for mode in no-cache cold warm; do
 done
 [[ $(grep -c 'source-cache:/cache' "$TEST_DOCKER_CALLS") == 2 ]]
 pass 'cache comparison gives cold and warm a shared cache but leaves no-cache unmounted'
+UBUNTU_VERSION=26.04 SOURCE_BUILD_DISTRO=rolling SOURCE_BUILD_CACHE_MODE=on
+run 0
+grep -Fq 'SOURCE_BUILD_DISTRO=rolling' "$TEST_DOCKER_CALLS"
+grep -Fq 'source-build-prepare:/home/builder/ros2_rolling/exact.repos' "$TEST_DOCKER_CALLS"
+grep -Fq 'source-build-normal:/home/builder/ros2_rolling/talker.log' "$TEST_DOCKER_CALLS"
+pass 'Rolling selection reaches setup and build containers and artifact collection'
+SOURCE_BUILD_DISTRO=''
+run 0
+grep -Fq 'SOURCE_BUILD_DISTRO=lyrical' "$TEST_DOCKER_CALLS"
+grep -Fq '/home/builder/ros2_lyrical/exact.repos' "$TEST_DOCKER_CALLS"
+pass 'unspecified CI distribution retains the explicit stable selection'
+for combination in '24.04 rolling' '26.04 jazzy' '22.04 rolling' '26.04 invalid'; do
+    read -r UBUNTU_VERSION SOURCE_BUILD_DISTRO <<< "$combination"
+    run 2
+    [[ ! -s $TEST_DOCKER_CALLS ]]
+    grep -Fq 'Unsupported Ubuntu/source distribution combination' "$sandbox/stderr"
+    pass "unsupported source selection rejected before Docker: $combination"
+done
+UBUNTU_VERSION=24.04 SOURCE_BUILD_DISTRO=''
 SOURCE_BUILD_CACHE_MODE=off SOURCE_BUILD_PROFILE=benchmark
 SOURCE_BUILD_WORKERS=2
 run 2

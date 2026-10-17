@@ -9,6 +9,9 @@ on:
       source:
         required: true
         type: string
+      distro:
+        type: string
+        default: ''
 
       profile:
         type: string
@@ -29,7 +32,7 @@ permissions:
 
 jobs:
   build:
-    name: Source build (${{ matrix.arch }})
+    name: Source build (${{ inputs.distro || 'stable' }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ (inputs.profile == 'benchmark' || inputs.cache_mode == 'benchmark') && 240 || 120 }}
     strategy:
@@ -40,6 +43,8 @@ jobs:
             runner: ubuntu-24.04
           - arch: arm64
             runner: ubuntu-24.04-arm
+    env:
+      SOURCE_BUILD_DISTRO: ${{ inputs.distro }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -121,13 +126,14 @@ jobs:
             26.04) distro=lyrical ;;
             *) exit 1 ;;
           esac
+          distro=${SOURCE_BUILD_DISTRO:-$distro}
           mkdir -p _ci/source-build
           for container in source-build source-build-prepare source-build-baseline source-build-auto source-build-low-memory source-build-normal source-build-no-cache source-build-cold source-build-warm; do
             if docker inspect "$container" >/dev/null 2>&1; then
               target="_ci/source-build/$container"
               mkdir -p "$target"
               docker logs "$container" > "$target/container.log" 2>&1 || true
-              for item in exact.repos log talker.log listener.log build-metrics.txt build-memory-peak.txt cache-context.txt cache-toolchain.txt ccache-stats.txt sccache-stats.json sccache-stop.txt; do
+              for item in exact.repos build-package-paths.txt log talker.log listener.log build-metrics.txt build-memory-peak.txt cache-context.txt cache-toolchain.txt ccache-stats.txt sccache-stats.json sccache-stop.txt; do
                 docker cp "$container:/home/builder/ros2_$distro/$item" "$target/" || true
               done
             fi
@@ -184,6 +190,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: source-build-${{ inputs.ubuntu }}-${{ matrix.arch }}
+          name: source-build-${{ inputs.ubuntu }}-${{ inputs.distro || 'stable' }}-${{ matrix.arch }}
           path: _ci/source-build
           retention-days: 7

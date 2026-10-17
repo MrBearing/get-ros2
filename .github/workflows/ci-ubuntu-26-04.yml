@@ -42,3 +42,14 @@ jobs:
       source_package_workers: ${{ inputs.source_package_workers || '' }}
       source_compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
       source_cache: ${{ inputs.source_cache || 'on' }}
+
+  rolling:
+    uses: ./.github/workflows/check-source.yml
+    with:
+      ubuntu: '26.04'
+      source: repository
+      distro: rolling
+      profile: ${{ inputs.source_profile || 'auto' }}
+      package_workers: ${{ inputs.source_package_workers || '' }}
+      compiler_jobs: ${{ inputs.source_compiler_jobs || '' }}
+      cache_mode: ${{ inputs.source_cache || 'on' }}
