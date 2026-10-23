@@ -118,12 +118,29 @@ curl -fsSL https://get-ros2.com/install.sh | sh -s -- --distro jazzy
 
 | Option | Description |
 | --- | --- |
-| `--distro humble\|jazzy\|lyrical` | Validate the OS/distribution combination; select automatically when omitted |
-| `--variant desktop\|ros-base` | Select the metapackage to install; defaults to desktop |
+| `--distro humble\|jazzy\|lyrical` | Validate the OS/distribution combination; falls back to `GET_ROS2_DISTRO`, then the OS-matching LTS |
+| `--variant desktop\|ros-base` | Select the metapackage; falls back to `GET_ROS2_VARIANT`, then desktop |
 | `--with-dev-tools` | Also install `ros-dev-tools` |
 | `--dry-run` | Show planned commands without confirmation, sudo, network access, or file changes |
 | `-y`, `--yes` | Explicitly acknowledge the UNOFFICIAL / WITHOUT WARRANTY notice and skip the confirmation prompt |
 | `--help` | Show help |
+
+### Environment variables
+
+Both scripts accept `GET_ROS2_DISTRO` as an alternative to `--distro`. `install.sh` also accepts `GET_ROS2_VARIANT` as an alternative to `--variant`. The priority is **CLI options > environment variables > built-in defaults**. Unset or empty environment variables use the built-in defaults: binary installation selects the OS-matching LTS distribution and `desktop`; source setup selects Rolling.
+
+Older published releases may ignore these variables. Check the downloaded script's `--help` output and use CLI options until a release with environment-variable support is deployed.
+
+For example, on Ubuntu 24.04:
+
+```sh
+curl -fsSL https://get-ros2.com/install.sh | GET_ROS2_DISTRO=jazzy GET_ROS2_VARIANT=ros-base sh
+
+# A CLI option overrides the corresponding environment variable
+curl -fsSL https://get-ros2.com/install.sh | GET_ROS2_VARIANT=desktop sh -s -- --variant ros-base
+```
+
+Put assignments on the `sh` side of the pipe so the script receives them. The effective values must still match the supported OS/distribution combinations; invalid values stop execution before system changes. Existing `ROS_DISTRO` values are not used as installer configuration. `GET_ROS2_VARIANT` does not affect source setup. Environment-variable equivalents of boolean flags are not supported; use the CLI options for `--yes`, `--dry-run`, and `--with-dev-tools`.
 
 For unattended use, explicitly acknowledge the UNOFFICIAL / WITHOUT WARRANTY notice:
 
@@ -155,7 +172,7 @@ curl -fsSL https://get-ros2.com/setup-source.sh | sh
 
 **This is an UNOFFICIAL setup script, provided WITHOUT WARRANTY OF ANY KIND.** It asks for confirmation before modifying the system. The supported options are `--distro rolling|humble|jazzy|lyrical`, `--dry-run`, `--yes` / `-y`, and `--help` / `-h`. Without a controlling terminal, explicit acknowledgement with `--yes` is required. A dry run makes no changes.
 
-Stable distributions require an explicit `--distro` selection. These source-build combinations are supported on amd64 and arm64:
+Stable distributions require an explicit `--distro` or `GET_ROS2_DISTRO` selection. These source-build combinations are supported on amd64 and arm64:
 
 | Ubuntu | Source distribution | Selection |
 | --- | --- | --- |
@@ -168,6 +185,9 @@ For example, on Ubuntu 24.04:
 
 ```sh
 curl -fsSL https://get-ros2.com/setup-source.sh | sh -s -- --distro jazzy
+
+# Equivalent environment-variable selection
+curl -fsSL https://get-ros2.com/setup-source.sh | GET_ROS2_DISTRO=jazzy sh
 ```
 
 Without an explicit selection, Ubuntu 22.04 and 24.04 stop before making changes and show the required option. Rolling follows ongoing development, so its target platforms and dependencies may change. This project initially supports Rolling only on Ubuntu 26.04. Existing `ROS_DISTRO` environment values do not select the source distribution. Binary installation through `install.sh` continues to select the matching stable LTS distribution automatically.

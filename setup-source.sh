@@ -33,7 +33,7 @@ ASSUME_YES=0
 TARGET_USER=
 TARGET_HOME=
 SWITCH_USER=0
-DISTRO=rolling
+DISTRO=${GET_ROS2_DISTRO:-rolling}
 USE_SUDO=0
 WORK_DIR=
 LOG_FILE=
@@ -65,8 +65,16 @@ Options:
   -y, --yes           Accept the UNOFFICIAL / WITHOUT WARRANTY notice and skip confirmation
   -h, --help          Show this help
 
+Environment variables:
+  GET_ROS2_DISTRO     Alternative to --distro (default: rolling)
+  CLI options override environment variables; unset or empty variables use defaults.
+  ROS_DISTRO does not select the source distribution. Use --yes for consent.
+
+Example on Ubuntu 24.04:
+  curl -fsSL https://get-ros2.com/setup-source.sh | GET_ROS2_DISTRO=jazzy sh
+
 Supported: Ubuntu 26.04 → Rolling (default) or Lyrical
-           Ubuntu 22.04 → Humble / 24.04 → Jazzy (explicit --distro required)
+           Ubuntu 22.04 → Humble / 24.04 → Jazzy (explicit --distro or GET_ROS2_DISTRO required)
 Rolling's target platforms and dependencies may change over time.
 USAGE
 }
@@ -87,7 +95,7 @@ parse_args() {
     done
     case "$DISTRO" in
         rolling|humble|jazzy|lyrical) ;;
-        *) die E_ARGUMENT "--distro must be rolling, humble, jazzy, or lyrical." 2 ;;
+        *) die E_ARGUMENT "The ROS 2 distribution must be rolling, humble, jazzy, or lyrical. Use --distro or GET_ROS2_DISTRO." 2 ;;
     esac
 }
 
@@ -125,10 +133,10 @@ detect_platform() {
         die E_OS "The OS version and codename do not match: $VERSION_ID / $RELEASE_CODENAME. Check the state of your OS upgrade." 3
     if [ "$DISTRO" = rolling ]; then
         [ "$VERSION_ID" = 26.04 ] ||
-            die E_DISTRO "Rolling source setup requires Ubuntu 26.04. On Ubuntu $VERSION_ID, explicitly select --distro $EXPECTED_DISTRO, or upgrade to Ubuntu 26.04 for Rolling." 3
+            die E_DISTRO "Rolling source setup requires Ubuntu 26.04. On Ubuntu $VERSION_ID, explicitly select --distro $EXPECTED_DISTRO (or GET_ROS2_DISTRO=$EXPECTED_DISTRO), or upgrade to Ubuntu 26.04 for Rolling." 3
     else
         [ "$DISTRO" = "$EXPECTED_DISTRO" ] ||
-            die E_DISTRO "Use --distro $EXPECTED_DISTRO on Ubuntu $VERSION_ID. Rolling is supported only on Ubuntu 26.04." 3
+            die E_DISTRO "Use --distro $EXPECTED_DISTRO or GET_ROS2_DISTRO=$EXPECTED_DISTRO on Ubuntu $VERSION_ID. Rolling is supported only on Ubuntu 26.04." 3
     fi
     command -v apt-get >/dev/null 2>&1 || die E_PACKAGE_MANAGER 'apt-get was not found. Run this installer in a standard Ubuntu environment.' 3
     command -v dpkg >/dev/null 2>&1 || die E_PACKAGE_MANAGER 'dpkg was not found. Run this installer in a standard Ubuntu environment.' 3

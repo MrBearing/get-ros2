@@ -70,6 +70,7 @@ jobs:
               bash tests/source-build-driver.sh
               bash tests/cache-keys.sh
               bash tests/source-setup.sh
+              bash tests/environment.sh
               bash tests/fetch.sh setup-source.sh setup-source.sh
               bash tests/run.sh /tmp/installer-under-test.sh
               cp /tmp/installer-under-test.sh /artifacts/install.sh
