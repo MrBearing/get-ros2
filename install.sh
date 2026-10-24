@@ -31,8 +31,8 @@ PROGRAM=get-ros2
 DRY_RUN=0
 ASSUME_YES=0
 WITH_DEV_TOOLS=0
-VARIANT=desktop
-DISTRO=
+VARIANT=${GET_ROS2_VARIANT:-desktop}
+DISTRO=${GET_ROS2_DISTRO:-}
 USE_SUDO=0
 WORK_DIR=
 LOG_FILE=
@@ -66,6 +66,15 @@ Options:
   -y, --yes           Accept the UNOFFICIAL / WITHOUT WARRANTY notice and skip confirmation
   -h, --help          Show this help
 
+Environment variables:
+  GET_ROS2_DISTRO     Alternative to --distro
+  GET_ROS2_VARIANT    Alternative to --variant (install.sh only)
+  CLI options override environment variables; unset or empty variables use defaults.
+  ROS_DISTRO does not select the installation distribution. Use --yes for consent.
+
+Example on Ubuntu 24.04:
+  curl -fsSL https://get-ros2.com/install.sh | GET_ROS2_DISTRO=jazzy GET_ROS2_VARIANT=ros-base sh
+
 Supported: Ubuntu 22.04 → Humble / 24.04 → Jazzy / 26.04 → Lyrical
 USAGE
 }
@@ -90,11 +99,11 @@ parse_args() {
     done
     case "$VARIANT" in
         desktop|ros-base) ;;
-        *) die E_ARGUMENT "--variant must be desktop or ros-base." 2 ;;
+        *) die E_ARGUMENT "The variant must be desktop or ros-base. Use --variant or GET_ROS2_VARIANT." 2 ;;
     esac
     case "$DISTRO" in
         ''|humble|jazzy|lyrical) ;;
-        *) die E_ARGUMENT "--distro must be humble, jazzy, or lyrical." 2 ;;
+        *) die E_ARGUMENT "The ROS 2 distribution must be humble, jazzy, or lyrical. Use --distro or GET_ROS2_DISTRO." 2 ;;
     esac
 }
 
@@ -132,7 +141,7 @@ detect_platform() {
         die E_OS "The OS version and codename do not match: $VERSION_ID / $RELEASE_CODENAME. Check the state of your OS upgrade." 3
     if [ -z "$DISTRO" ]; then DISTRO=$EXPECTED_DISTRO; fi
     [ "$DISTRO" = "$EXPECTED_DISTRO" ] ||
-        die E_DISTRO "Use $EXPECTED_DISTRO on Ubuntu $VERSION_ID. The $DISTRO packages are not built for this OS release." 3
+        die E_DISTRO "Use --distro $EXPECTED_DISTRO or GET_ROS2_DISTRO=$EXPECTED_DISTRO on Ubuntu $VERSION_ID. The $DISTRO packages are not built for this OS release." 3
     command -v apt-get >/dev/null 2>&1 || die E_PACKAGE_MANAGER 'apt-get was not found. Run this installer in a standard Ubuntu environment.' 3
     command -v dpkg >/dev/null 2>&1 || die E_PACKAGE_MANAGER 'dpkg was not found. Run this installer in a standard Ubuntu environment.' 3
     ARCH=$(dpkg --print-architecture) || die E_DETECTION 'Unable to detect the package architecture.' 3

@@ -7,7 +7,7 @@ root=$(mktemp -d /tmp/get-ros2-source-tests.tlS404.XXXXXXXX)
 trap 'rm -r -- "$root"' EXIT
 mkdir "$root/bin" "$root/home"
 export TEST_SOURCE_ROOT=$root HOME=$root/home
-unset SUDO_USER SUDO_UID ROS_DISTRO AMENT_PREFIX_PATH CMAKE_PREFIX_PATH
+unset SUDO_USER SUDO_UID ROS_DISTRO AMENT_PREFIX_PATH CMAKE_PREFIX_PATH GET_ROS2_DISTRO GET_ROS2_VARIANT
 cat > "$root/bin/mock" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -200,7 +200,7 @@ contains stderr 'ERROR E_ARGUMENT:'
 pass 'empty explicit distribution rejected'
 run 0 sh "$root/setup.sh" --help
 contains stdout 'default: rolling'
-contains stdout 'explicit --distro required'
+contains stdout 'explicit --distro or GET_ROS2_DISTRO required'
 [[ ! -s $root/calls ]]
 pass 'help explains default and explicit stable selection'
 reset

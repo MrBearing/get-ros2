@@ -3,6 +3,7 @@
 set -euo pipefail
 directory=$(cd -- "$(dirname -- "$0")" && pwd)
 installer=$(realpath "${1:-install.sh}")
+unset GET_ROS2_DISTRO GET_ROS2_VARIANT
 # Keep misleading TLS/HTTP substrings in paths to catch diagnostic false positives.
 root=$(mktemp -d /tmp/get-ros2-regression.tlS404.XXXXXXXX)
 trap 'rm -rf -- "$root"' EXIT

@@ -3,6 +3,7 @@
 set -euo pipefail
 
 installer=$(realpath "${1:-install.sh}")
+unset GET_ROS2_DISTRO GET_ROS2_VARIANT
 fixtures=$(cd -- "$(dirname -- "$0")" && pwd)/fixtures/errors.tsv
 sandbox=$(mktemp -d /tmp/get-ros2-errors.XXXXXXXX)
 cleanup() {
