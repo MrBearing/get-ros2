@@ -96,6 +96,7 @@
   <header class="wrap">
     <a class="brand" href="./" aria-label="get-ros2.com home">get-ros2.com</a>
     <nav aria-label="Main navigation">
+      <a href="#source-build">Source build</a>
       <a href="#supported">Compatibility</a>
       <a href="#verify">Verify download</a>
       <a href="https://github.com/MrBearing/get-ros2">GitHub ↗</a>
@@ -125,6 +126,17 @@
       </div>
       <p class="under-command"><span>Requires internet access, a working APT configuration, and root or sudo privileges.</span><a href="#verify">Verify the download before installing ↓</a></p>
       <noscript><p>JavaScript is disabled. Select and copy the displayed commands manually.</p></noscript>
+    </section>
+
+    <section id="source-build" class="section" aria-labelledby="source-build-heading">
+      <div class="section-heading"><h2 id="source-build-heading">Set up a source build</h2></div>
+      <p>Prepare a ROS 2 Rolling build environment on Ubuntu 26.04 (amd64 or arm64). Run this as your regular user with sudo access. The script installs development tools, prepares rosdep, and prints the commands for checking out and building ROS 2.</p>
+      <div class="terminal">
+        <div class="terminal-bar"><span class="label">Rolling · Ubuntu 26.04</span><button type="button" data-copy="source-command" aria-label="Copy source setup command" hidden>Copy command</button></div>
+        <pre class="install-command"><code id="source-command">curl -fsSL https://get-ros2.com/setup-source.sh | sh</code></pre>
+        <div class="terminal-bottom"><p>Want to inspect it first? <a href="setup-source.sh">Read setup-source.sh</a></p><p class="status" id="source-command-status" role="status" aria-live="polite"></p></div>
+      </div>
+      <p class="under-command"><a href="https://github.com/MrBearing/get-ros2#build-ros-2-from-source">Stable distro options and checksum verification ↗</a></p>
     </section>
 
     <section id="supported" class="section" aria-labelledby="supported-heading">
