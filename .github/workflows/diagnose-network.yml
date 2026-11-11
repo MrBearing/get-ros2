@@ -1,0 +1,40 @@
+name: Diagnose container networking
+on:
+  push:
+    branches: [ci/fix-container-dns]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    steps:
+      - name: Compare runner and container networking
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo 'Host resolver'
+          cat /etc/resolv.conf
+          resolvectl status || true
+          docker version
+          for host in archive.ubuntu.com security.ubuntu.com ports.ubuntu.com; do
+            getent ahostsv4 "$host" || true
+          done
+          for mode in bridge host; do
+            echo "::group::Network mode: $mode"
+            docker run --rm --network "$mode" ubuntu:24.04 bash -c '
+              cat /etc/resolv.conf
+              for host in archive.ubuntu.com security.ubuntu.com ports.ubuntu.com; do
+                getent ahostsv4 "$host" || true
+              done
+              apt-get -o APT::Update::Error-Mode=any -o Acquire::Retries=0 -o Acquire::http::Timeout=15 update
+            '
+            result=$?
+            echo "APT_RESULT mode=$mode exit=$result"
+            echo '::endgroup::'
+          done

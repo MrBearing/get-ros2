@@ -132,3 +132,17 @@ The first Ubuntu 22.04 restore attempt had a changed source revision and a diffe
 The reported restore timer covers both compiler and Cargo restoration, including key lookup. The save timer covers both cache saves. Storage/retrieval failures are non-fatal and can produce a cold build. Cache limits and GitHub eviction can also lower hit rates. APT dependency resolution was not skipped in any restored run.
 
 Evidence: comparison runs [22.04](https://github.com/MrBearing/get-ros2/actions/runs/37606934874), [24.04](https://github.com/MrBearing/get-ros2/actions/runs/37606938859), [26.04](https://github.com/MrBearing/get-ros2/actions/runs/37606943391); GitHub restore runs [22.04](https://github.com/MrBearing/get-ros2/actions/runs/37615018814), [24.04](https://github.com/MrBearing/get-ros2/actions/runs/37612646658), [26.04](https://github.com/MrBearing/get-ros2/actions/runs/37618985677). The first 22.04 invalidation run is [37612041654](https://github.com/MrBearing/get-ros2/actions/runs/37612041654). Updated compiler-content invalidation tests at `d9675d7` passed on all six native cache-tool jobs in the restore runs.
+
+### CI container networking
+
+GitHub Actions jobs use Docker host networking for installer checks, cache-tool
+checks, and source builds. This avoids the bridge DNS/network path that failed
+with `Could not resolve` during APT setup on hosted runners. Containers still
+use the requested Ubuntu image; only the network namespace is shared with the
+runner. Local source-build driver runs retain Docker's default network.
+
+See [Docker host networking](https://docs.docker.com/engine/network/drivers/host/).
+This is a workaround; the failed runs did not capture enough DNS configuration
+to identify the underlying runner issue. Confirm it with a new CI run. Re-running
+an old workflow run uses its original workflow revision and does not apply this
+change.

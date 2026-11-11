@@ -49,7 +49,7 @@ jobs:
           INSTALLER_SOURCE: ${{ inputs.source }}
         run: |
           mkdir _ci
-          docker run --rm --init \
+          docker run --rm --init --network host \
             -v "$PWD:/workspace:ro" -v "$PWD/_ci:/artifacts" -w /workspace \
             -e DEBIAN_FRONTEND=noninteractive -e INSTALLER_SOURCE \
             "ubuntu:$UBUNTU_VERSION" bash -euo pipefail -c '
@@ -102,7 +102,7 @@ jobs:
           UBUNTU_VERSION: ${{ inputs.ubuntu }}
           ROS_VARIANT: ${{ matrix.variant }}
         run: |
-          docker run --rm --init -i \
+          docker run --rm --init --network host -i \
             -v "$PWD/installer/install.sh:/installer/install.sh:ro" \
             "ubuntu:$UBUNTU_VERSION" sh -c \
             'cat /installer/install.sh | sh -s -- --yes --variant "$1"' sh "$ROS_VARIANT"
