@@ -146,5 +146,7 @@ Docker DNS configuration. Ubuntu images, APT signature checks, and HTTPS certifi
 verification are unchanged. These jobs download public dependencies and do not
 need Azure private DNS names.
 
-Diagnostics: https://github.com/MrBearing/get-ros2/actions/runs/43044026474
+Diagnostics (default DNS timeout): https://github.com/MrBearing/get-ros2/actions/runs/43044026474
+Validation (public DNS, APT succeeds on both architectures):
+https://github.com/MrBearing/get-ros2/actions/runs/43044651431
 Docker DNS options: https://docs.docker.com/engine/network/#dns-services
