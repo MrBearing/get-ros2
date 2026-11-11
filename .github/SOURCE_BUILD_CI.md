@@ -133,16 +133,18 @@ The reported restore timer covers both compiler and Cargo restoration, including
 
 Evidence: comparison runs [22.04](https://github.com/MrBearing/get-ros2/actions/runs/37606934874), [24.04](https://github.com/MrBearing/get-ros2/actions/runs/37606938859), [26.04](https://github.com/MrBearing/get-ros2/actions/runs/37606943391); GitHub restore runs [22.04](https://github.com/MrBearing/get-ros2/actions/runs/37615018814), [24.04](https://github.com/MrBearing/get-ros2/actions/runs/37612646658), [26.04](https://github.com/MrBearing/get-ros2/actions/runs/37618985677). The first 22.04 invalidation run is [37612041654](https://github.com/MrBearing/get-ros2/actions/runs/37612041654). Updated compiler-content invalidation tests at `d9675d7` passed on all six native cache-tool jobs in the restore runs.
 
-### CI container networking
+### CI container DNS
 
-GitHub Actions jobs use Docker host networking for installer checks, cache-tool
-checks, and source builds. This avoids the bridge DNS/network path that failed
-with `Could not resolve` during APT setup on hosted runners. Containers still
-use the requested Ubuntu image; only the network namespace is shared with the
-runner. Local source-build driver runs retain Docker's default network.
+CI containers explicitly use Cloudflare (`1.1.1.1`) and Google (`8.8.8.8`) DNS.
+On 2026-11-11, the hosted runner's Azure DNS (`168.63.129.16`) timed out;
+queries to the public resolvers succeeded on amd64 and arm64. Both bridge and
+host-network containers failed APT updates with the default DNS. Host networking
+alone therefore did not fix the failure.
 
-See [Docker host networking](https://docs.docker.com/engine/network/drivers/host/).
-This is a workaround; the failed runs did not capture enough DNS configuration
-to identify the underlying runner issue. Confirm it with a new CI run. Re-running
-an old workflow run uses its original workflow revision and does not apply this
-change.
+The override is scoped to CI containers; local source builds retain their normal
+Docker DNS configuration. Ubuntu images, APT signature checks, and HTTPS certificate
+verification are unchanged. These jobs download public dependencies and do not
+need Azure private DNS names.
+
+Diagnostics: https://github.com/MrBearing/get-ros2/actions/runs/43044026474
+Docker DNS options: https://docs.docker.com/engine/network/#dns-services

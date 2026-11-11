@@ -27,7 +27,7 @@ jobs:
           UBUNTU_VERSION: ${{ inputs.ubuntu }}
         run: |
           case "$UBUNTU_VERSION" in 22.04|24.04|26.04) ;; *) exit 2 ;; esac
-          docker run --rm --init --network host -v "$PWD:/workspace:ro" -w /workspace \
+          docker run --rm --init --dns 1.1.1.1 --dns 8.8.8.8 -v "$PWD:/workspace:ro" -w /workspace \
             -e DEBIAN_FRONTEND=noninteractive "ubuntu:$UBUNTU_VERSION" bash -euo pipefail -c '
               apt-get update
               apt-get install -y --no-install-recommends ca-certificates curl gcc g++ cmake rustc cargo
