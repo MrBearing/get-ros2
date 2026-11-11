@@ -17,14 +17,21 @@ jobs:
       - name: Compare runner and container networking
         shell: bash
         run: |
+          set +e
           set -uo pipefail
           echo 'Host resolver'
           cat /etc/resolv.conf
           resolvectl status || true
           docker version
-          for host in archive.ubuntu.com security.ubuntu.com ports.ubuntu.com; do
+          for host in github.com example.com archive.ubuntu.com security.ubuntu.com ports.ubuntu.com; do
             getent ahostsv4 "$host" || true
           done
+          echo 'Direct DNS queries'
+          for dns in 168.63.129.16 1.1.1.1 8.8.8.8; do
+            nslookup -timeout=2 archive.ubuntu.com "$dns" || true
+          done
+          echo 'HTTPS connectivity without DNS'
+          curl -I --max-time 15 --resolve cloudflare-dns.com:443:1.1.1.1 https://cloudflare-dns.com/ || true
           for mode in bridge host; do
             echo "::group::Network mode: $mode"
             docker run --rm --network "$mode" ubuntu:24.04 bash -c '
