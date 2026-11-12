@@ -24,6 +24,11 @@ fi
 installer=${1:?Usage: run-source-build.sh SETUP_SCRIPT}
 common=(--init -e SOURCE_BUILD_TEST_CONTAINER=1 -e DEBIAN_FRONTEND=noninteractive
     -v "$PWD:/workspace:ro" -w /workspace)
+# Azure DNS timed out on hosted runners; public resolvers answered in diagnostics.
+# Scope the workaround to CI containers, retaining local Docker DNS settings.
+if [[ ${GITHUB_ACTIONS:-} == true ]]; then
+    common+=(--dns 1.1.1.1 --dns 8.8.8.8)
+fi
 settings=(-e SOURCE_BUILD_WORKERS="${SOURCE_BUILD_WORKERS:-}" -e SOURCE_BUILD_JOBS="${SOURCE_BUILD_JOBS:-}" -e SOURCE_BUILD_DISTRO="$distro")
 collect() {
     local container=$1 target="_ci/source-build/$1" item
